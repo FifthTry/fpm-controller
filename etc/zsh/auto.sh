@@ -14,7 +14,9 @@ function pop() {
 function manage() {
   push "$PROJDIR"/src/dj/
   python manage.py "$*"
+  response=$?
   pop
+  return $response
 }
 
 function run() {
@@ -43,4 +45,16 @@ function recreatedb() {
     psql -h 127.0.0.1 -c "DROP DATABASE IF EXISTS fpm_controller;" template1
     psql -h 127.0.0.1 -c "CREATE DATABASE fpm_controller;" template1
     migrate $*
+}
+
+function makemigrations() {
+  manage makemigrations $*
+}
+
+function djshell() {
+  manage shell
+}
+
+function dbshell() {
+  manage dbshell
 }
