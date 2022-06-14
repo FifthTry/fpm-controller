@@ -1,6 +1,6 @@
 import django.http
-from django.shortcuts import render
 from django.http import JsonResponse
+from dj.fpm.models import DedicatedInstance
 
 # Create your views here.
 
@@ -31,7 +31,6 @@ def fpm_ready(req: django.http.HttpRequest):
 
 
 def get_package(req: django.http.HttpRequest):
-
     if req.method != "GET":
         return error("request method is not supported", status=402)
 
@@ -40,8 +39,13 @@ def get_package(req: django.http.HttpRequest):
     if not ec2_reservation:
         return error("ec2_reservation is mandatory parameter", status=402)
 
+    try:
+        instance: DedicatedInstance = DedicatedInstance.objects.get(ec2_reservation=ec2_reservation)
+    except:
+        return error("instance with ec2_reservation id not found", status=404)
+
     return success({
-        "package": "<package-name>",
-        "git": "<git-url>"
+        "package": instance.package.name,
+        "git": instance.package.git
     })
 
