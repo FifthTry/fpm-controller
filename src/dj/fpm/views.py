@@ -1,6 +1,6 @@
 import django.http
 from django.http import JsonResponse
-from dj.fpm.models import DedicatedInstance
+from fpm.models import DedicatedInstance
 
 # Create your views here.
 
@@ -26,6 +26,15 @@ def fpm_ready(req: django.http.HttpRequest):
 
     if not git_hash:
         return error("hash is mandatory parameter", status=402)
+
+    try:
+        instance: DedicatedInstance = DedicatedInstance.objects.get(ec2_reservation=ec2_reservation)
+    except:
+        return error("instance with ec2_reservation id not found", status=404)
+
+    instance.package.hash = git_hash
+    instance.status = 'ready'
+    instance.save()
 
     return success({})
 
