@@ -21,6 +21,11 @@ class Package(models.Model):
     plan = models.CharField(help_text="We have different plans like free, paid for serving FPM package", max_length=255)
     hours = models.IntegerField(default=0)
     status = models.CharField(help_text="status of the package", max_length=255, choices=package_status)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name
 
 
 class DedicatedInstance(models.Model):
@@ -29,3 +34,5 @@ class DedicatedInstance(models.Model):
     ec2_instance_id = models.CharField(null=True, blank=True, max_length=255)
     status = models.CharField(
         help_text="status of EC2 instance, ready, initializing, ect...", max_length=127, choices=instance_status)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)

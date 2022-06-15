@@ -37,7 +37,6 @@ function 0() {
 
 function migrate() {
   manage migrate $*
-  echo migrate_done
 }
 
 function recreatedb() {
@@ -58,4 +57,8 @@ function djshell() {
 
 function dbshell() {
   manage dbshell
+}
+
+function createsuperuser() {
+  manage createsuperuser
 }
