@@ -1,8 +1,8 @@
 export PYTHONPATH=$PYTHONPATH:$PROJDIR/src:$PROJDIR/src/dj
 
 function push() {
-  CWD=${1:-$PROJDIR}
-  cd "$CWD" >> /dev/null || return;
+  CWD=$(pwd)
+  cd "${1:-$PROJDIR}" >> /dev/null || return;
 }
 
 function pop() {
@@ -37,6 +37,7 @@ function 0() {
 
 function migrate() {
   manage migrate $*
+  echo migrate_done
 }
 
 function recreatedb() {
