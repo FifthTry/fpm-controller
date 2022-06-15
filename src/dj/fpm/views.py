@@ -28,12 +28,14 @@ def fpm_ready(req: django.http.HttpRequest):
         return error("hash is mandatory parameter", status=402)
 
     try:
-        instance: DedicatedInstance = DedicatedInstance.objects.get(ec2_reservation=ec2_reservation)
+        instance: DedicatedInstance = DedicatedInstance.objects.get(
+            ec2_reservation=ec2_reservation
+        )
     except:
         return error("instance with ec2_reservation id not found", status=404)
 
     instance.package.hash = git_hash
-    instance.status = 'ready'
+    instance.status = "ready"
     instance.save()
 
     return success({})
@@ -49,12 +51,10 @@ def get_package(req: django.http.HttpRequest):
         return error("ec2_reservation is mandatory parameter", status=402)
 
     try:
-        instance: DedicatedInstance = DedicatedInstance.objects.get(ec2_reservation=ec2_reservation)
+        instance: DedicatedInstance = DedicatedInstance.objects.get(
+            ec2_reservation=ec2_reservation
+        )
     except:
         return error("instance with ec2_reservation id not found", status=404)
 
-    return success({
-        "package": instance.package.name,
-        "git": instance.package.git
-    })
-
+    return success({"package": instance.package.name, "git": instance.package.git})

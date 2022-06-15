@@ -4,5 +4,5 @@ from . import views
 
 urlpatterns = [
     path(r"fpm-ready", views.fpm_ready),
-    path(r"get-package", views.get_package)
+    path(r"get-package", views.get_package),
 ]
