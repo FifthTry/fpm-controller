@@ -66,8 +66,8 @@ class PackageDomainMap(models.Model):
 
 class DedicatedInstance(models.Model):
     package = models.ForeignKey(Package, on_delete=models.CASCADE)
-    ec2_reservation = models.CharField(db_index=True, max_length=255)
-    ec2_instance_id = models.CharField(null=True, blank=True, max_length=255)
+    # ec2_reservation = models.CharField(db_index=True, max_length=255)
+    ec2_instance_id = models.CharField(db_index=True, unique=True, max_length=30)
     status = models.CharField(
         help_text="status of EC2 instance, ready, initializing, ect...",
         max_length=127,
