@@ -1,8 +1,6 @@
 from django.db import models
+from django.core.validators import MaxValueValidator, MinValueValidator, RegexValidator
 
-# Create your models here.
-
-package_status = [("deployed", "Package Deployed"), ("in_dev", "In development state")]
 
 instance_status = [
     ("initializing", "Instance Initializing"),
@@ -11,27 +9,59 @@ instance_status = [
 ]
 
 
+class Plan(models.Model):
+    name = models.CharField(
+        max_length=50,
+    )
+    slug = models.SlugField(max_length=50, unique=True)
+    hours_per_day = models.IntegerField(
+        default=24, validators=[MaxValueValidator(24), MinValueValidator(1)]
+    )
+
+    def __str__(self) -> str:
+        return f"{self.name} [{self.hours_per_day} hours per day]"
+
+
 class Package(models.Model):
+    class PackageStatusChoices(models.TextChoices):
+        CONNECTED = "CONNECTED", "Connected"
+        DEPLOYED = "DEPLOYED", "Deployed"
+        ARCHIVED = "ARCHIVED", "Archived"
+
     name = models.CharField(
         unique=True, help_text="name of the FPM package", max_length=255
     )
-    git = models.CharField(help_text="git url of FPM package", max_length=1023)
-    hash = models.CharField(
-        null=True, blank=True, help_text="latest deployed hash of git", max_length=512
+    git = models.CharField(
+        help_text="git url of FPM package",
+        max_length=1023,
+        validators=[
+            RegexValidator(
+                regex=r"((git|ssh|http(s)?)|(git@[\w\.]+))(:(//)?)([\w\.@\:/\-~]+)(\.git)(/)?",
+                message="Please enter a valid git url",
+            )
+        ],
     )
-    plan = models.CharField(
+    plan = models.ForeignKey(
+        Plan,
+        on_delete=models.PROTECT,
         help_text="We have different plans like free, paid for serving FPM package",
-        max_length=255,
     )
-    hours = models.IntegerField(default=0)
     status = models.CharField(
-        help_text="status of the package", max_length=255, choices=package_status
+        help_text="status of the package",
+        max_length=20,
+        choices=PackageStatusChoices.choices,
+        default=PackageStatusChoices.CONNECTED,
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return self.name
+
+
+class PackageDomainMap(models.Model):
+    subdomain = models.SlugField(max_length=50, unique=True)
+    custom_domain = models.CharField(max_length=100, null=True, blank=True)
 
 
 class DedicatedInstance(models.Model):
@@ -45,3 +75,9 @@ class DedicatedInstance(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+
+class PackageDeployment(models.Model):
+    package = models.ForeignKey(Package, on_delete=models.CASCADE)
+    hash = models.CharField(max_length=40)
+    created_at = models.DateTimeField(auto_now_add=True)
