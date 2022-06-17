@@ -15,7 +15,10 @@ class Package(models.Model):
     name = models.CharField(
         unique=True, help_text="name of the FPM package", max_length=255
     )
-    git = models.CharField(help_text="git url of FPM package", max_length=1023)
+    base = models.CharField(
+        help_text="github, gitlab or bitbucket raw content base url of repository/FPM package",
+        max_length=1023,
+    )
     hash = models.CharField(
         null=True, blank=True, help_text="latest deployed hash of git", max_length=512
     )
