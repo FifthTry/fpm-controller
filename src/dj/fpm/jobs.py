@@ -1,9 +1,11 @@
 import boto3
-
+from django.conf import settings
 
 class ClientManager(object):
     def __init__(self):
-        self.ec2 = boto3.client("ec2")
+        self.boto3 = boto3.Session()
+        self.ec2 = self.boto3.resource("ec2")
+        self.ec2_client = self.boto3.client("ec2")
 
     def create_instance(self):
         """
@@ -12,10 +14,20 @@ class ClientManager(object):
         Output:
             - Reservation ID
         """
-        AMI_ID = "ami-0d58faa21cb14df81"
-        instances = self.ec2.create_instances(
-            MaxCount=1, MinCount=1, ImageId=AMI_ID, InstanceType="t2.micro"
+        response = self.ec2_client.run_instances(
+            MaxCount=1,
+            MinCount=1,
+            # ImageId=settings.BASE_FPM_CLIENT_AMI_ID,
+            InstanceType="t2.micro",
+            LaunchTemplate={
+                "LaunchTemplateId": "lt-07067c8b5ac945df2",
+            },
         )
-        # Returns a list of all the instances created(in this case, only one)
-        instance = instances[0]
-        return instance.id
+        return (response["Instances"][0]["InstanceId"], response["Instances"][0]["PrivateIpAddress"])
+
+    def stop_instance(self, instance_id):
+        self.ec2_client.stop_instances(InstanceIds=[instance_id])
+        return True
+
+# def test():
+    

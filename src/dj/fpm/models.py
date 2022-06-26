@@ -1,5 +1,12 @@
 from django.db import models
 from django.core.validators import MaxValueValidator, MinValueValidator, RegexValidator
+# import fpm import lib
+from fpm import jobs as fpm_jobs
+from tempfile import NamedTemporaryFile
+from django.conf import settings
+from textwrap import dedent
+from django.utils.text import slugify
+import subprocess
 
 
 instance_status = [
@@ -58,6 +65,13 @@ class Package(models.Model):
     def __str__(self):
         return self.name
 
+    def save(self, *args, **kwargs) -> None:
+        super().save(*args, **kwargs)
+        self.refresh_from_db()
+        server_instance = DedicatedInstance.objects.get_or_create(
+            package=self,
+        )
+
 
 class PackageDomainMap(models.Model):
     subdomain = models.SlugField(max_length=50, unique=True)
@@ -65,16 +79,55 @@ class PackageDomainMap(models.Model):
 
 
 class DedicatedInstance(models.Model):
+    class InstanceStatus(models.TextChoices):
+        INITIALIZING = "INITIALIZING", "Initializing"
+        READY = "READY", "Ready"
+        STOP = "STOPPED", "Stopped"
+
+
     package = models.ForeignKey(Package, on_delete=models.CASCADE)
-    # ec2_reservation = models.CharField(db_index=True, max_length=255)
     ec2_instance_id = models.CharField(db_index=True, unique=True, max_length=30)
     status = models.CharField(
         help_text="status of EC2 instance, ready, initializing, ect...",
         max_length=127,
-        choices=instance_status,
+        choices=InstanceStatus.choices,
     )
+    ip = models.GenericIPAddressField(blank=True, null=True)
+    config = models.FileField(upload_to="confs", blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    def save(self, *args, **kwargs):
+        client_manager = fpm_jobs.ClientManager()
+        if self.pk is None:
+            self.status = "initializing"
+            (self.ec2_instance_id, self.ip) = client_manager.create_instance()
+        # elif self.status == self.InstanceStatus.STOP:
+        #     client_manager.stop_instance(self.ec2_instance_id)
+        super().save(*args, **kwargs)
+    
+    def mark_ready(self, git_hash):
+        # Create the nginx config
+        # Save the nginx config
+        # Reload the nginx configurations
+        # with open(settings.NGINX_CONFIG_DIR + "")
+        # print()
+        with open(settings.NGINX_CONFIG_DIR + f"{self.package.id}.conf", "w+") as f:
+            f.write(dedent("""
+            server {
+                listen       80;
+                listen       [::]:80;
+                server_name %s.5thtry.com;
+                location / {
+                    proxy_pass http://%s:8000;
+                }
+            }
+            """ %(self.package.name, self.ip))
+            )
+        subprocess.run(["sudo", "systemctl", "restart", "nginx"])
+        self.status = self.InstanceStatus.READY
+        self.save()
+        pass
 
 
 class PackageDeployment(models.Model):

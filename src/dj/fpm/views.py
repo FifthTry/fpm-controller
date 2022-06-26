@@ -34,9 +34,9 @@ def fpm_ready(req: django.http.HttpRequest):
     except:
         return error("instance with ec2_instance_id id not found", status=404)
 
-    instance.package.hash = git_hash
-    instance.status = "ready"
-    instance.save()
+    # instance.package.hash = git_hash
+    # instance.status = "ready"
+    instance.mark_ready(git_hash)
 
     return success({})
 
@@ -57,4 +57,5 @@ def get_package(req: django.http.HttpRequest):
     except:
         return error("instance with ec2_instance_id id not found", status=404)
 
-    return success({"package": instance.package.name, "git": instance.package.git})
+    # return success({"package": "inter", "git": instance.package.git, "base": "https://fifthtry.com/"})
+    return success({"package": instance.package.name, "git": instance.package.git, "base": "https://github.com/"})

@@ -7,8 +7,19 @@ class PlanAdmin(admin.ModelAdmin):
     prepopulated_fields = {"slug": ("name",)}
     list_display = ("name", "hours_per_day")
 
+@admin.action(description='Turn off package instances')
+def stop_package_instances(modeladmin, request, queryset):
+    queryset.update(status='p')
 
 @admin.register(fpm_models.Package)
 class PackageAdmin(admin.ModelAdmin):
-    list_display = ("name", "plan", "status")
+    list_display = ("name", "plan", "status", "is_running")
     exclude = ("created_at", "updated_at", "status")
+    actions = [stop_package_instances]
+
+    def is_running(self, instance):
+        return True
+
+admin.site.register(fpm_models.PackageDomainMap)
+admin.site.register(fpm_models.DedicatedInstance)
+admin.site.register(fpm_models.PackageDeployment)
