@@ -1,5 +1,6 @@
 from django.db import models
 from django.core.validators import MaxValueValidator, MinValueValidator, RegexValidator
+
 # import fpm import lib
 from fpm import jobs as fpm_jobs
 from tempfile import NamedTemporaryFile
@@ -68,9 +69,10 @@ class Package(models.Model):
     def save(self, *args, **kwargs) -> None:
         super().save(*args, **kwargs)
         self.refresh_from_db()
-        server_instance = DedicatedInstance.objects.get_or_create(
+        (server_instance, _) = DedicatedInstance.objects.get_or_create(
             package=self,
         )
+        server_instance.initialize()
 
 
 class PackageDomainMap(models.Model):
@@ -80,15 +82,16 @@ class PackageDomainMap(models.Model):
 
 class DedicatedInstance(models.Model):
     class InstanceStatus(models.TextChoices):
-        INITIALIZING = "INITIALIZING", "Initializing"
+        INITIALIZED = "INITIALIZED", "Initialized"
+        PENDING = "PENDING", "Pending"
         READY = "READY", "Ready"
-        STOP = "STOPPED", "Stopped"
-
+        STOPPED = "STOPPED", "Stopped"
+        TERMINATED = "TERMINATED", "Terminated"
 
     package = models.ForeignKey(Package, on_delete=models.CASCADE)
     ec2_instance_id = models.CharField(db_index=True, unique=True, max_length=30)
     status = models.CharField(
-        help_text="status of EC2 instance, ready, initializing, ect...",
+        help_text="status of EC2 instance, ready, initialized, ect...",
         max_length=127,
         choices=InstanceStatus.choices,
     )
@@ -97,23 +100,27 @@ class DedicatedInstance(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    def __str__(self) -> str:
+        return f"{self.package.name} {self.ec2_instance_id} @ {self.ip}"
+
     def save(self, *args, **kwargs):
-        client_manager = fpm_jobs.ClientManager()
         if self.pk is None:
-            self.status = "initializing"
-            (self.ec2_instance_id, self.ip) = client_manager.create_instance()
-        # elif self.status == self.InstanceStatus.STOP:
-        #     client_manager.stop_instance(self.ec2_instance_id)
+            self.status = self.InstanceStatus.INITIALIZED
         super().save(*args, **kwargs)
-    
+
+    def initialize(self):
+        client_manager = fpm_jobs.ClientManager()
+        (self.ec2_instance_id, self.ip) = client_manager.create_instance(
+            self.package.name
+        )
+        self.status = self.InstanceStatus.PENDING
+        self.save()
+
     def mark_ready(self, git_hash):
-        # Create the nginx config
-        # Save the nginx config
-        # Reload the nginx configurations
-        # with open(settings.NGINX_CONFIG_DIR + "")
-        # print()
         with open(settings.NGINX_CONFIG_DIR + f"{self.package.id}.conf", "w+") as f:
-            f.write(dedent("""
+            f.write(
+                dedent(
+                    """
             server {
                 listen       80;
                 listen       [::]:80;
@@ -122,12 +129,13 @@ class DedicatedInstance(models.Model):
                     proxy_pass http://%s:8000;
                 }
             }
-            """ %(self.package.name, self.ip))
+            """
+                    % (self.package.name, self.ip)
+                )
             )
         subprocess.run(["sudo", "systemctl", "restart", "nginx"])
         self.status = self.InstanceStatus.READY
         self.save()
-        pass
 
 
 class PackageDeployment(models.Model):
