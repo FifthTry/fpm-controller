@@ -127,13 +127,23 @@ class DedicatedInstance(models.Model):
                 server_name %s.5thtry.com;
                 location / {
                     proxy_pass http://%s:8000;
+                    proxy_http_version 1.1;
+                    proxy_set_header Host $host;
+                    proxy_set_header X-Real-IP $remote_addr;
+                    proxy_buffering off;
                 }
             }
             """
-                    % (self.package.name, self.ip)
+                    % (slugify(self.package.name), self.ip)
                 )
             )
-        subprocess.run(["sudo", "systemctl", "restart", "nginx"])
+        subprocess.Popen(
+            ["sudo /bin/systemctl restart nginx"],
+            shell=True,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
         self.status = self.InstanceStatus.READY
         self.save()
 
