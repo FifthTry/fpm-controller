@@ -1,5 +1,10 @@
 import boto3
 from django.conf import settings
+from textwrap import dedent
+import subprocess
+
+import os
+from django.template import Template, Context
 
 
 class ClientManager(object):
@@ -41,29 +46,95 @@ class ClientManager(object):
         return True
 
 
-from django.conf import settings
-import os
-from django.template import Template, Context
-
 class NginxConfigGenerator:
     template_dir = os.path.join(settings.BASE_DIR, "nginx_templates")
     
-    def generate_config_for_package(self, package):
-        pass
+    def __init__(self, package, server_instance):
+        self.package = package
+        self.server_instance = server_instance
+
+    def generate(self):
+        self._generate_for_subdomain()
+        for domain_instance in self.package.domains.all():
+            if domain_instance.state != "SUCCESS":
+                self._generate_for_custom_domain_without_ssl(domain_instance)
+                domain_instance.state = "WAITING"
+                try:
+                    self._generate_ssl_certificate(domain_instance)
+                    self._generate_for_custom_domain_with_ssl(domain_instance)
+                    domain_instance.state = "SUCCESS"
+                except:
+                    domain_instance.state = "FAILED"
+                domain_instance.save()
+        self.reload_nginx()
 
     def _generate_for_subdomain(self):
-        pass
+        context = Context({
+            "full_subdomain": f"{self.package.slug}.5thtry.com",
+            "client_ip": self.server_instance.ip
+        })
+        template_name = "subdomain.txt"
+        with open(os.path.join(settings.NGINX_CONFIG_DIR, f"{self.package.slug}_subdomain.conf"), "w+") as f:
+            f.write(
+                dedent(self._render(template_name, context))
+            )
 
-    def _generate_for_custom_domain_without_ssl(self):
-        pass
+    def _generate_for_custom_domain_without_ssl(self, domain_instance):
+        context = Context({
+            "full_domain": domain_instance.custom_domain,
+            "client_ip": self.server_instance.ip
+        })
+        template_name = "custom_domain_pre_ssl.txt"
+        with open(os.path.join(settings.NGINX_CONFIG_DIR, f"{self.package.slug}_{domain_instance.id}.conf"), "w+") as f:
+            f.write(
+                dedent(self._render(template_name, context))
+            )
 
-    def _generate_for_custom_domain_with_ssl(self):
-        pass
+    def _generate_ssl_certificate(self, domain_instance):
+        domain_name = domain_instance.custom_domain
+        os.makedirs(f"/var/www/html/certs/{domain_name}/.well-known/acme-challenge/", exist_ok=True)
+        '''
+            certbot certonly: Run certbot to just generate the certificate
+            -d {domain_name}: For the domain name
+            --webroot: Use webroot method to generate config
+            -w <dir>: Directory to keep the challenge
+            -n: Non interactive. In case of reuse, this fails silently
+
+            For the scenario, where the certificate is not up for renewal, it still exits with 0
+        '''
+
+        subprocess.Popen([
+            f"sudo certbot certonly -d {domain_name} --webroot -w /var/www/html/certs/{domain_name} -n"
+        ], shell=True,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
+        )
+        
+
+    def _generate_for_custom_domain_with_ssl(self, domain_instance):
+        context = Context({
+            "full_domain": domain_instance.custom_domain,
+            "client_ip": self.server_instance.ip
+        })
+        template_name = "custom_domain_post_ssl.txt"
+        with open(os.path.join(settings.NGINX_CONFIG_DIR, f"{self.package.slug}_{domain_instance.id}.conf"), "w+") as f:
+            f.write(
+                dedent(self._render(template_name, context))
+            )
+        # domain_instance.state = "domain_instance.state = "WAITING""
+    
+    def reload_nginx(self):
+        subprocess.Popen(
+            ["sudo /bin/systemctl restart nginx"],
+            shell=True,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
 
     def _render(self, template_name, context):
         with open(os.path.join(self.template_dir, template_name), 'r') as f:
             src = Template(f.read())
-            # context = Context({"full_subdomain": subdomain, "client_ip": client_ip})
             result = src.render(context)
-            print(result)
         return result

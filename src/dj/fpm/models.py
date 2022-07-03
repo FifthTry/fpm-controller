@@ -39,6 +39,7 @@ class Package(models.Model):
     name = models.CharField(
         unique=True, help_text="name of the FPM package", max_length=255
     )
+    slug = models.SlugField(max_length=50, unique=True)
     git = models.CharField(
         help_text="git url of FPM package",
         max_length=1023,
@@ -69,10 +70,11 @@ class Package(models.Model):
     def save(self, *args, **kwargs) -> None:
         super().save(*args, **kwargs)
         self.refresh_from_db()
-        (server_instance, _) = DedicatedInstance.objects.get_or_create(
+        (server_instance, is_new) = DedicatedInstance.objects.get_or_create(
             package=self,
         )
-        server_instance.initialize()
+        if is_new:
+            server_instance.initialize()
 
 
 class PackageDomainMap(models.Model):
@@ -81,14 +83,21 @@ class PackageDomainMap(models.Model):
         WAITING = "WAITING", "SSL Certificate generation in progress"
         FAILED = "FAILED", "SSL Certificate generation failed"
         SUCCESS = "SUCCESS", "SSL Certificate generated sucessfully"
-    package = models.ForeignKey(Package, on_delete=models.CASCADE)
-    custom_domain = models.CharField(max_length=100, null=True, blank=True)
+    package = models.ForeignKey(Package, on_delete=models.CASCADE, related_name="domains")
+    # Domain is unique. Including a subdomain
+    custom_domain = models.CharField(max_length=100, null=True, blank=True, unique=True)
     state = models.CharField(choices=DomainMapStatusChoices.choices, max_length=10, null=True, blank=True)
 
+    def __str__(self) -> str:
+        return f"{self.custom_domain} - {self.package.name}"
+
     def save(self, *args, **kwargs):
-        if not self.pk:
+        if self.pk is None:
             self.state = self.DomainMapStatusChoices.INITIATED
         super().save(*args, **kwargs)
+        if self.state != self.DomainMapStatusChoices.SUCCESS:
+            nginx_config_instance = fpm_jobs.NginxConfigGenerator(self.package, self.package.dedicatedinstance_set.get())
+            nginx_config_instance.generate()
 
 
 class DedicatedInstance(models.Model):
@@ -145,7 +154,7 @@ class DedicatedInstance(models.Model):
                 }
             }
             """
-                    % (slugify(self.package.name), self.ip)
+                    % (slugify(self.package.slug), self.ip)
                 )
             )
         subprocess.Popen(
