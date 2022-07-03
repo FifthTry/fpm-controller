@@ -76,8 +76,19 @@ class Package(models.Model):
 
 
 class PackageDomainMap(models.Model):
-    subdomain = models.SlugField(max_length=50, unique=True)
+    class DomainMapStatusChoices(models.TextChoices):
+        INITIATED = "INITIATED", "Process Initiated"
+        WAITING = "WAITING", "SSL Certificate generation in progress"
+        FAILED = "FAILED", "SSL Certificate generation failed"
+        SUCCESS = "SUCCESS", "SSL Certificate generated sucessfully"
+    package = models.ForeignKey(Package, on_delete=models.CASCADE)
     custom_domain = models.CharField(max_length=100, null=True, blank=True)
+    state = models.CharField(choices=DomainMapStatusChoices.choices, max_length=10, null=True, blank=True)
+
+    def save(self, *args, **kwargs):
+        if not self.pk:
+            self.state = self.DomainMapStatusChoices.INITIATED
+        super().save(*args, **kwargs)
 
 
 class DedicatedInstance(models.Model):
