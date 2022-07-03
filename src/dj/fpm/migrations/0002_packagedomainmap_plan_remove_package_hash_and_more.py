@@ -8,57 +8,120 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('fpm', '0001_initial'),
+        ("fpm", "0001_initial"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='PackageDomainMap',
+            name="PackageDomainMap",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('subdomain', models.SlugField(unique=True)),
-                ('custom_domain', models.CharField(blank=True, max_length=100, null=True)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("subdomain", models.SlugField(unique=True)),
+                (
+                    "custom_domain",
+                    models.CharField(blank=True, max_length=100, null=True),
+                ),
             ],
         ),
         migrations.CreateModel(
-            name='Plan',
+            name="Plan",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=50)),
-                ('slug', models.SlugField(unique=True)),
-                ('hours_per_day', models.IntegerField(default=24, validators=[django.core.validators.MaxValueValidator(24), django.core.validators.MinValueValidator(1)])),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("name", models.CharField(max_length=50)),
+                ("slug", models.SlugField(unique=True)),
+                (
+                    "hours_per_day",
+                    models.IntegerField(
+                        default=24,
+                        validators=[
+                            django.core.validators.MaxValueValidator(24),
+                            django.core.validators.MinValueValidator(1),
+                        ],
+                    ),
+                ),
             ],
         ),
         migrations.RemoveField(
-            model_name='package',
-            name='hash',
+            model_name="package",
+            name="hash",
         ),
         migrations.RemoveField(
-            model_name='package',
-            name='hours',
+            model_name="package",
+            name="hours",
         ),
         migrations.AlterField(
-            model_name='package',
-            name='git',
-            field=models.CharField(help_text='git url of FPM package', max_length=1023, validators=[django.core.validators.RegexValidator(message='Please enter a valid git url', regex='((git|ssh|http(s)?)|(git@[\\w\\.]+))(:(//)?)([\\w\\.@\\:/\\-~]+)(\\.git)(/)?')]),
+            model_name="package",
+            name="git",
+            field=models.CharField(
+                help_text="git url of FPM package",
+                max_length=1023,
+                validators=[
+                    django.core.validators.RegexValidator(
+                        message="Please enter a valid git url",
+                        regex="((git|ssh|http(s)?)|(git@[\\w\\.]+))(:(//)?)([\\w\\.@\\:/\\-~]+)(\\.git)(/)?",
+                    )
+                ],
+            ),
         ),
         migrations.AlterField(
-            model_name='package',
-            name='status',
-            field=models.CharField(choices=[('CONNECTED', 'Connected'), ('DEPLOYED', 'Deployed'), ('ARCHIVED', 'Archived')], default='CONNECTED', help_text='status of the package', max_length=20),
+            model_name="package",
+            name="status",
+            field=models.CharField(
+                choices=[
+                    ("CONNECTED", "Connected"),
+                    ("DEPLOYED", "Deployed"),
+                    ("ARCHIVED", "Archived"),
+                ],
+                default="CONNECTED",
+                help_text="status of the package",
+                max_length=20,
+            ),
         ),
         migrations.CreateModel(
-            name='PackageDeployment',
+            name="PackageDeployment",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('hash', models.CharField(max_length=40)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('package', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='fpm.package')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("hash", models.CharField(max_length=40)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "package",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE, to="fpm.package"
+                    ),
+                ),
             ],
         ),
         migrations.AlterField(
-            model_name='package',
-            name='plan',
-            field=models.ForeignKey(help_text='We have different plans like free, paid for serving FPM package', on_delete=django.db.models.deletion.PROTECT, to='fpm.plan'),
+            model_name="package",
+            name="plan",
+            field=models.ForeignKey(
+                help_text="We have different plans like free, paid for serving FPM package",
+                on_delete=django.db.models.deletion.PROTECT,
+                to="fpm.plan",
+            ),
         ),
     ]

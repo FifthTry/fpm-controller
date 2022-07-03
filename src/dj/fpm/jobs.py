@@ -48,7 +48,7 @@ class ClientManager(object):
 
 class NginxConfigGenerator:
     template_dir = os.path.join(settings.BASE_DIR, "nginx_templates")
-    
+
     def __init__(self, package, server_instance):
         self.package = package
         self.server_instance = server_instance
@@ -69,31 +69,45 @@ class NginxConfigGenerator:
         self.reload_nginx()
 
     def _generate_for_subdomain(self):
-        context = Context({
-            "full_subdomain": f"{self.package.slug}.5thtry.com",
-            "client_ip": self.server_instance.ip
-        })
+        context = Context(
+            {
+                "full_subdomain": f"{self.package.slug}.5thtry.com",
+                "client_ip": self.server_instance.ip,
+            }
+        )
         template_name = "subdomain.txt"
-        with open(os.path.join(settings.NGINX_CONFIG_DIR, f"{self.package.slug}_subdomain.conf"), "w+") as f:
-            f.write(
-                dedent(self._render(template_name, context))
-            )
+        with open(
+            os.path.join(
+                settings.NGINX_CONFIG_DIR, f"{self.package.slug}_subdomain.conf"
+            ),
+            "w+",
+        ) as f:
+            f.write(dedent(self._render(template_name, context)))
 
     def _generate_for_custom_domain_without_ssl(self, domain_instance):
-        context = Context({
-            "full_domain": domain_instance.custom_domain,
-            "client_ip": self.server_instance.ip
-        })
+        context = Context(
+            {
+                "full_domain": domain_instance.custom_domain,
+                "client_ip": self.server_instance.ip,
+            }
+        )
         template_name = "custom_domain_pre_ssl.txt"
-        with open(os.path.join(settings.NGINX_CONFIG_DIR, f"{self.package.slug}_{domain_instance.id}.conf"), "w+") as f:
-            f.write(
-                dedent(self._render(template_name, context))
-            )
+        with open(
+            os.path.join(
+                settings.NGINX_CONFIG_DIR,
+                f"{self.package.slug}_{domain_instance.id}.conf",
+            ),
+            "w+",
+        ) as f:
+            f.write(dedent(self._render(template_name, context)))
 
     def _generate_ssl_certificate(self, domain_instance):
         domain_name = domain_instance.custom_domain
-        os.makedirs(f"/var/www/html/certs/{domain_name}/.well-known/acme-challenge/", exist_ok=True)
-        '''
+        os.makedirs(
+            f"/var/www/html/certs/{domain_name}/.well-known/acme-challenge/",
+            exist_ok=True,
+        )
+        """
             certbot certonly: Run certbot to just generate the certificate
             -d {domain_name}: For the domain name
             --webroot: Use webroot method to generate config
@@ -101,29 +115,36 @@ class NginxConfigGenerator:
             -n: Non interactive. In case of reuse, this fails silently
 
             For the scenario, where the certificate is not up for renewal, it still exits with 0
-        '''
+        """
 
-        subprocess.Popen([
-            f"sudo certbot certonly -d {domain_name} --webroot -w /var/www/html/certs/{domain_name} -n"
-        ], shell=True,
+        subprocess.Popen(
+            [
+                f"sudo certbot certonly -d {domain_name} --webroot -w /var/www/html/certs/{domain_name} -n"
+            ],
+            shell=True,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE
+            stderr=subprocess.PIPE,
         )
-        
 
     def _generate_for_custom_domain_with_ssl(self, domain_instance):
-        context = Context({
-            "full_domain": domain_instance.custom_domain,
-            "client_ip": self.server_instance.ip
-        })
+        context = Context(
+            {
+                "full_domain": domain_instance.custom_domain,
+                "client_ip": self.server_instance.ip,
+            }
+        )
         template_name = "custom_domain_post_ssl.txt"
-        with open(os.path.join(settings.NGINX_CONFIG_DIR, f"{self.package.slug}_{domain_instance.id}.conf"), "w+") as f:
-            f.write(
-                dedent(self._render(template_name, context))
-            )
+        with open(
+            os.path.join(
+                settings.NGINX_CONFIG_DIR,
+                f"{self.package.slug}_{domain_instance.id}.conf",
+            ),
+            "w+",
+        ) as f:
+            f.write(dedent(self._render(template_name, context)))
         # domain_instance.state = "domain_instance.state = "WAITING""
-    
+
     def reload_nginx(self):
         subprocess.Popen(
             ["sudo /bin/systemctl restart nginx"],
@@ -134,7 +155,7 @@ class NginxConfigGenerator:
         )
 
     def _render(self, template_name, context):
-        with open(os.path.join(self.template_dir, template_name), 'r') as f:
+        with open(os.path.join(self.template_dir, template_name), "r") as f:
             src = Template(f.read())
             result = src.render(context)
         return result

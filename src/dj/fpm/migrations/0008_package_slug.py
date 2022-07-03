@@ -6,14 +6,14 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('fpm', '0007_auto_20220703_0533'),
+        ("fpm", "0007_auto_20220703_0533"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='package',
-            name='slug',
-            field=models.SlugField(default='', unique=True),
+            model_name="package",
+            name="slug",
+            field=models.SlugField(default="", unique=True),
             preserve_default=False,
         ),
     ]

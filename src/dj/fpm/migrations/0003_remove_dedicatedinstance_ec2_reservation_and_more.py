@@ -6,18 +6,20 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('fpm', '0002_packagedomainmap_plan_remove_package_hash_and_more'),
+        ("fpm", "0002_packagedomainmap_plan_remove_package_hash_and_more"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='dedicatedinstance',
-            name='ec2_reservation',
+            model_name="dedicatedinstance",
+            name="ec2_reservation",
         ),
         migrations.AlterField(
-            model_name='dedicatedinstance',
-            name='ec2_instance_id',
-            field=models.CharField(db_index=True, default=1, max_length=30, unique=True),
+            model_name="dedicatedinstance",
+            name="ec2_instance_id",
+            field=models.CharField(
+                db_index=True, default=1, max_length=30, unique=True
+            ),
             preserve_default=False,
         ),
     ]

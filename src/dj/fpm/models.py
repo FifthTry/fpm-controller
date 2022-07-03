@@ -83,10 +83,15 @@ class PackageDomainMap(models.Model):
         WAITING = "WAITING", "SSL Certificate generation in progress"
         FAILED = "FAILED", "SSL Certificate generation failed"
         SUCCESS = "SUCCESS", "SSL Certificate generated sucessfully"
-    package = models.ForeignKey(Package, on_delete=models.CASCADE, related_name="domains")
+
+    package = models.ForeignKey(
+        Package, on_delete=models.CASCADE, related_name="domains"
+    )
     # Domain is unique. Including a subdomain
     custom_domain = models.CharField(max_length=100, null=True, blank=True, unique=True)
-    state = models.CharField(choices=DomainMapStatusChoices.choices, max_length=10, null=True, blank=True)
+    state = models.CharField(
+        choices=DomainMapStatusChoices.choices, max_length=10, null=True, blank=True
+    )
 
     def __str__(self) -> str:
         return f"{self.custom_domain} - {self.package.name}"
@@ -96,7 +101,9 @@ class PackageDomainMap(models.Model):
             self.state = self.DomainMapStatusChoices.INITIATED
         super().save(*args, **kwargs)
         if self.state != self.DomainMapStatusChoices.SUCCESS:
-            nginx_config_instance = fpm_jobs.NginxConfigGenerator(self.package, self.package.dedicatedinstance_set.get())
+            nginx_config_instance = fpm_jobs.NginxConfigGenerator(
+                self.package, self.package.dedicatedinstance_set.get()
+            )
             nginx_config_instance.generate()
 
 

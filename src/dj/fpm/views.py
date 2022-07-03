@@ -3,6 +3,7 @@ from django.http import JsonResponse
 from fpm.models import DedicatedInstance
 from fpm import jobs as fpm_jobs
 
+
 def success(data, status=200):
     return JsonResponse({"result": data, "success": True}, status=status)
 
@@ -57,4 +58,10 @@ def get_package(req: django.http.HttpRequest):
         return error("instance with ec2_instance_id id not found", status=404)
 
     # return success({"package": "inter", "git": instance.package.git, "base": "https://fifthtry.com/"})
-    return success({"package": instance.package.name, "git": instance.package.git, "base": "https://github.com/"})
+    return success(
+        {
+            "package": instance.package.name,
+            "git": instance.package.git,
+            "base": "https://github.com/",
+        }
+    )

@@ -6,18 +6,26 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('fpm', '0003_remove_dedicatedinstance_ec2_reservation_and_more'),
+        ("fpm", "0003_remove_dedicatedinstance_ec2_reservation_and_more"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='dedicatedinstance',
-            name='config',
-            field=models.FileField(blank=True, null=True, upload_to='confs'),
+            model_name="dedicatedinstance",
+            name="config",
+            field=models.FileField(blank=True, null=True, upload_to="confs"),
         ),
         migrations.AlterField(
-            model_name='dedicatedinstance',
-            name='status',
-            field=models.CharField(choices=[('INITIALIZING', 'Initializing'), ('READY', 'Ready'), ('STOPPED', 'Stopped')], help_text='status of EC2 instance, ready, initializing, ect...', max_length=127),
+            model_name="dedicatedinstance",
+            name="status",
+            field=models.CharField(
+                choices=[
+                    ("INITIALIZING", "Initializing"),
+                    ("READY", "Ready"),
+                    ("STOPPED", "Stopped"),
+                ],
+                help_text="status of EC2 instance, ready, initializing, ect...",
+                max_length=127,
+            ),
         ),
     ]
