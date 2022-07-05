@@ -8,7 +8,7 @@ from django.conf import settings
 from textwrap import dedent
 from django.utils.text import slugify
 import subprocess
-
+from fpm import tasks
 
 instance_status = [
     ("initializing", "Instance Initializing"),
@@ -99,12 +99,19 @@ class PackageDomainMap(models.Model):
     def save(self, *args, **kwargs):
         if self.pk is None:
             self.state = self.DomainMapStatusChoices.INITIATED
+        if self.pk is not None and self.state in [self.DomainMapStatusChoices.WAITING]:
+            assert False, "Panic! Waiting for the task to complete"
         super().save(*args, **kwargs)
         if self.state != self.DomainMapStatusChoices.SUCCESS:
-            nginx_config_instance = fpm_jobs.NginxConfigGenerator(
-                self.package, self.package.dedicatedinstance_set.get()
+            nginx_config_instance = tasks.nginx_config_generator(
+                self.package,
+                self.package.dedicatedinstance_set.get()
             )
-            nginx_config_instance.generate()
+            nginx_config_instance()
+            # nginx_config_instance = fpm_jobs.NginxConfigGenerator(
+            #     self.package, self.package.dedicatedinstance_set.get()
+            # )
+            # nginx_config_instance.generate()
 
 
 class DedicatedInstance(models.Model):

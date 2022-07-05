@@ -7,8 +7,8 @@ server {
 server {
     listen 443 ssl;
     server_name {{ full_domain }};
-    ssl_certificate /etc/letsencrypt/live/{{ full_domain }}/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/{{ full_domain }}/privkey.pem;
+    ssl_certificate /home/ec2-user/tls/{{ full_domain }}.pem;
+    ssl_certificate_key /home/ec2-user/tls/{{ full_domain }}.key;
     location /.well-known/acme-challenge/ {
         alias /var/www/html/certs/{{ full_domain }}/.well-known/acme-challenge/;
     }

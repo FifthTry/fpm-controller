@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "huey.contrib.djhuey",
     "fpm",
 ]
 
@@ -126,6 +127,13 @@ STATIC_URL = "static/"
 # https://docs.djangoproject.com/en/4.0/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+HUEY = {
+    'huey_class': 'huey.SqliteHuey',  # Huey implementation to use.
+    "filename": "huey.db",
+    'name': "test",  # Use db name for huey.
+    "immediate": False
+}
 
 try:
     from .local_settings import *  # noqa

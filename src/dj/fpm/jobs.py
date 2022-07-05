@@ -5,6 +5,7 @@ import subprocess
 
 import os
 from django.template import Template, Context
+from huey import SqliteHuey
 
 
 class ClientManager(object):
@@ -58,12 +59,14 @@ class NginxConfigGenerator:
         for domain_instance in self.package.domains.all():
             if domain_instance.state != "SUCCESS":
                 self._generate_for_custom_domain_without_ssl(domain_instance)
+                self.reload_nginx()
                 domain_instance.state = "WAITING"
-                try:
-                    self._generate_ssl_certificate(domain_instance)
+                domain_instance.save()
+                is_success = self._generate_ssl_certificate(domain_instance)
+                if is_success:
                     self._generate_for_custom_domain_with_ssl(domain_instance)
                     domain_instance.state = "SUCCESS"
-                except:
+                else:
                     domain_instance.state = "FAILED"
                 domain_instance.save()
         self.reload_nginx()
@@ -116,16 +119,37 @@ class NginxConfigGenerator:
 
             For the scenario, where the certificate is not up for renewal, it still exits with 0
         """
-
-        subprocess.Popen(
+        # Run the command and expect 0 code. If not, return false
+        # 
+        
+        # return subprocess.Popen(
+        #     [
+        #         f"sudo certbot certonly -d {domain_name} --webroot -w /var/www/html/certs/{domain_name} -n"
+        #     ],
+        #     shell=True,
+        #     stdin=subprocess.PIPE,
+        #     stdout=subprocess.PIPE,
+        #     stderr=subprocess.PIPE,
+        # ).wait() == 0
+# 
+        first_cert = subprocess.Popen(
             [
-                f"sudo certbot certonly -d {domain_name} --webroot -w /var/www/html/certs/{domain_name} -n"
+                f"/home/ec2-user/bin/acme.sh --issue --webroot /var/www/html/certs/{domain_name} -d {domain_name}"
             ],
             shell=True,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-        )
+        ).wait() == 0
+        return subprocess.Popen(
+            [
+                f"/home/ec2-user/bin/acme.sh --install-cert -d {domain_name} --key-file /home/ec2-user/tls/{domain_name}.key --fullchain-file /home/ec2-user/tls/{domain_name}.pem"
+            ],
+            shell=True,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        ).wait() == 0
 
     def _generate_for_custom_domain_with_ssl(self, domain_instance):
         context = Context(
@@ -152,7 +176,7 @@ class NginxConfigGenerator:
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-        )
+        ).wait()
 
     def _render(self, template_name, context):
         with open(os.path.join(self.template_dir, template_name), "r") as f:
