@@ -120,8 +120,8 @@ class NginxConfigGenerator:
             For the scenario, where the certificate is not up for renewal, it still exits with 0
         """
         # Run the command and expect 0 code. If not, return false
-        # 
-        
+        #
+
         # return subprocess.Popen(
         #     [
         #         f"sudo certbot certonly -d {domain_name} --webroot -w /var/www/html/certs/{domain_name} -n"
@@ -131,25 +131,31 @@ class NginxConfigGenerator:
         #     stdout=subprocess.PIPE,
         #     stderr=subprocess.PIPE,
         # ).wait() == 0
-# 
-        first_cert = subprocess.Popen(
-            [
-                f"/home/ec2-user/bin/acme.sh --issue --webroot /var/www/html/certs/{domain_name} -d {domain_name}"
-            ],
-            shell=True,
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-        ).wait() == 0
-        return subprocess.Popen(
-            [
-                f"/home/ec2-user/bin/acme.sh --install-cert -d {domain_name} --key-file /home/ec2-user/tls/{domain_name}.key --fullchain-file /home/ec2-user/tls/{domain_name}.pem"
-            ],
-            shell=True,
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-        ).wait() == 0
+        #
+        first_cert = (
+            subprocess.Popen(
+                [
+                    f"/home/ec2-user/bin/acme.sh --issue --webroot /var/www/html/certs/{domain_name} -d {domain_name}"
+                ],
+                shell=True,
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            ).wait()
+            == 0
+        )
+        return (
+            subprocess.Popen(
+                [
+                    f"/home/ec2-user/bin/acme.sh --install-cert -d {domain_name} --key-file /home/ec2-user/tls/{domain_name}.key --fullchain-file /home/ec2-user/tls/{domain_name}.pem"
+                ],
+                shell=True,
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            ).wait()
+            == 0
+        )
 
     def _generate_for_custom_domain_with_ssl(self, domain_instance):
         context = Context(

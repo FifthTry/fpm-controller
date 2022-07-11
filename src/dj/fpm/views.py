@@ -4,6 +4,7 @@ from fpm.models import DedicatedInstance
 from fpm import jobs as fpm_jobs
 from fpm import tasks as fpm_tasks
 
+
 def success(data, status=200):
     return JsonResponse({"result": data, "success": True}, status=status)
 
@@ -33,9 +34,7 @@ def fpm_ready(req: django.http.HttpRequest):
     except:
         return error("instance with ec2_instance_id id not found", status=404)
     # instance.package.hash = git_hash
-    nginx_config_manager = fpm_tasks.nginx_config_generator(
-        instance.package, instance
-    )
+    nginx_config_manager = fpm_tasks.nginx_config_generator(instance.package, instance)
     nginx_config_manager()
     # nginx_config_manager = fpm_jobs.NginxConfigGenerator(instance.package, instance)
     # nginx_config_manager.generate()
