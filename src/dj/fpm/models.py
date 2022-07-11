@@ -99,8 +99,8 @@ class PackageDomainMap(models.Model):
     def save(self, *args, **kwargs):
         if self.pk is None:
             self.state = self.DomainMapStatusChoices.INITIATED
-        if self.pk is not None and self.state in [self.DomainMapStatusChoices.WAITING]:
-            assert False, "Panic! Waiting for the task to complete"
+        # if self.pk is not None and self.state in [self.DomainMapStatusChoices.WAITING]:
+        #     assert False, "Panic! Waiting for the task to complete"
         super().save(*args, **kwargs)
         if self.state != self.DomainMapStatusChoices.SUCCESS:
             nginx_config_instance = tasks.nginx_config_generator(
