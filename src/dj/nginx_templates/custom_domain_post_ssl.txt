@@ -1,0 +1,22 @@
+server {
+    listen 80;
+    server_name {{ full_domain }};
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    server_name {{ full_domain }};
+    ssl_certificate /home/ec2-user/tls/{{ full_domain }}.pem;
+    ssl_certificate_key /home/ec2-user/tls/{{ full_domain }}.key;
+    location /.well-known/acme-challenge/ {
+        alias /var/www/html/certs/{{ full_domain }}/.well-known/acme-challenge/;
+    }
+    location / {
+        proxy_pass http://{{ client_ip }}:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_buffering off;
+    }
+}

@@ -1,9 +1,8 @@
 import django.http
 from django.http import JsonResponse
 from fpm.models import DedicatedInstance
-
-# Create your views here.
-
+from fpm import jobs as fpm_jobs
+from fpm import tasks as fpm_tasks
 
 def success(data, status=200):
     return JsonResponse({"result": data, "success": True}, status=status)
@@ -33,10 +32,15 @@ def fpm_ready(req: django.http.HttpRequest):
         )
     except:
         return error("instance with ec2_instance_id id not found", status=404)
-
     # instance.package.hash = git_hash
-    # instance.status = "ready"
-    instance.mark_ready(git_hash)
+    nginx_config_manager = fpm_tasks.nginx_config_generator(
+        instance.package, instance
+    )
+    nginx_config_manager()
+    # nginx_config_manager = fpm_jobs.NginxConfigGenerator(instance.package, instance)
+    # nginx_config_manager.generate()
+    instance.status = DedicatedInstance.InstanceStatus.READY
+    instance.save()
 
     return success({})
 
@@ -57,5 +61,10 @@ def get_package(req: django.http.HttpRequest):
     except:
         return error("instance with ec2_instance_id id not found", status=404)
 
-    # return success({"package": "inter", "git": instance.package.git, "base": "https://fifthtry.com/"})
-    return success({"package": instance.package.name, "git": instance.package.git, "base": "https://github.com/"})
+    return success(
+        {
+            "package": instance.package.name,
+            "git": instance.package.git,
+            "base": "https://github.com/",
+        }
+    )
