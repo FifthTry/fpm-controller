@@ -104,8 +104,7 @@ class PackageDomainMap(models.Model):
         super().save(*args, **kwargs)
         if self.state != self.DomainMapStatusChoices.SUCCESS:
             nginx_config_instance = tasks.nginx_config_generator(
-                self.package,
-                self.package.dedicatedinstance_set.get()
+                self.package, self.package.dedicatedinstance_set.get()
             )
             nginx_config_instance()
             # nginx_config_instance = fpm_jobs.NginxConfigGenerator(
