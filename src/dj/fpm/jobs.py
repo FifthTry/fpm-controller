@@ -55,42 +55,42 @@ class NginxConfigGenerator:
         self.server_instance = server_instance
 
     def generate(self):
-        self._generate_for_subdomain()
-        for domain_instance in self.package.domains.all():
-            if domain_instance.state != "SUCCESS":
-                self._generate_for_custom_domain_without_ssl(domain_instance)
+        if self.package.domain_state != "SUCCESS":
+            if self.package.site.domain.endswith("5thtry.com"):
+                self._generate_for_subdomain()
+                self.package.domain_state = "SUCCESS"
+            else:
+                self._generate_for_custom_domain_without_ssl()
                 self.reload_nginx()
-                domain_instance.state = "WAITING"
-                domain_instance.save()
-                is_success = self._generate_ssl_certificate(domain_instance)
+                self.package.domain_state = "WAITING"
+                self.package.save()
+                is_success = self._generate_ssl_certificate()
                 if is_success:
-                    self._generate_for_custom_domain_with_ssl(domain_instance)
-                    domain_instance.state = "SUCCESS"
+                    self._generate_for_custom_domain_with_ssl()
+                    self.package.domain_state = "SUCCESS"
                 else:
-                    domain_instance.state = "FAILED"
-                domain_instance.save()
+                    self.package.domain_state = "FAILED"
+            self.package.save()
         self.reload_nginx()
 
     def _generate_for_subdomain(self):
         context = Context(
             {
-                "full_subdomain": f"{self.package.slug}.5thtry.com",
+                "full_subdomain": f"{self.package.site.domain}",
                 "client_ip": self.server_instance.ip,
             }
         )
         template_name = "subdomain.txt"
         with open(
-            os.path.join(
-                settings.NGINX_CONFIG_DIR, f"{self.package.slug}_subdomain.conf"
-            ),
+            os.path.join(settings.NGINX_CONFIG_DIR, f"{self.package.slug}.conf"),
             "w+",
         ) as f:
             f.write(dedent(self._render(template_name, context)))
 
-    def _generate_for_custom_domain_without_ssl(self, domain_instance):
+    def _generate_for_custom_domain_without_ssl(self):
         context = Context(
             {
-                "full_domain": domain_instance.custom_domain,
+                "full_domain": self.package.site.domain,
                 "client_ip": self.server_instance.ip,
             }
         )
@@ -98,14 +98,14 @@ class NginxConfigGenerator:
         with open(
             os.path.join(
                 settings.NGINX_CONFIG_DIR,
-                f"{self.package.slug}_{domain_instance.id}.conf",
+                f"{self.package.slug}.conf",
             ),
             "w+",
         ) as f:
             f.write(dedent(self._render(template_name, context)))
 
-    def _generate_ssl_certificate(self, domain_instance):
-        domain_name = domain_instance.custom_domain
+    def _generate_ssl_certificate(self):
+        domain_name = self.package.site.domain
         os.makedirs(
             f"/var/www/html/certs/{domain_name}/.well-known/acme-challenge/",
             exist_ok=True,
@@ -120,8 +120,8 @@ class NginxConfigGenerator:
             For the scenario, where the certificate is not up for renewal, it still exits with 0
         """
         # Run the command and expect 0 code. If not, return false
-        # 
-        
+        #
+
         # return subprocess.Popen(
         #     [
         #         f"sudo certbot certonly -d {domain_name} --webroot -w /var/www/html/certs/{domain_name} -n"
@@ -131,30 +131,36 @@ class NginxConfigGenerator:
         #     stdout=subprocess.PIPE,
         #     stderr=subprocess.PIPE,
         # ).wait() == 0
-# 
-        first_cert = subprocess.Popen(
-            [
-                f"/home/ec2-user/bin/acme.sh --issue --webroot /var/www/html/certs/{domain_name} -d {domain_name}"
-            ],
-            shell=True,
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-        ).wait() == 0
-        return subprocess.Popen(
-            [
-                f"/home/ec2-user/bin/acme.sh --install-cert -d {domain_name} --key-file /home/ec2-user/tls/{domain_name}.key --fullchain-file /home/ec2-user/tls/{domain_name}.pem"
-            ],
-            shell=True,
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-        ).wait() == 0
+        #
+        first_cert = (
+            subprocess.Popen(
+                [
+                    f"/home/ec2-user/bin/acme.sh --issue --webroot /var/www/html/certs/{domain_name} -d {domain_name}"
+                ],
+                shell=True,
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            ).wait()
+            == 0
+        )
+        return (
+            subprocess.Popen(
+                [
+                    f"/home/ec2-user/bin/acme.sh --install-cert -d {domain_name} --key-file /home/ec2-user/tls/{domain_name}.key --fullchain-file /home/ec2-user/tls/{domain_name}.pem"
+                ],
+                shell=True,
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            ).wait()
+            == 0
+        )
 
-    def _generate_for_custom_domain_with_ssl(self, domain_instance):
+    def _generate_for_custom_domain_with_ssl(self):
         context = Context(
             {
-                "full_domain": domain_instance.custom_domain,
+                "full_domain": self.package.site.domain,
                 "client_ip": self.server_instance.ip,
             }
         )
@@ -162,7 +168,7 @@ class NginxConfigGenerator:
         with open(
             os.path.join(
                 settings.NGINX_CONFIG_DIR,
-                f"{self.package.slug}_{domain_instance.id}.conf",
+                f"{self.package.slug}.conf",
             ),
             "w+",
         ) as f:

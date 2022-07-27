@@ -37,9 +37,23 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django.contrib.sites",
+    "oauth2_provider",
+    "rest_framework",
+    "allauth",
+    "allauth.account",
+    "allauth.socialaccount",
+    "allauth.socialaccount.providers.github",
     "huey.contrib.djhuey",
     "fpm",
+    "child_auth",
 ]
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "oauth2_provider.contrib.rest_framework.OAuth2Authentication",
+    )
+}
+
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -49,7 +63,15 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    # "child_auth.middleware.InterceptLoginMiddleware",
 ]
+
+
+AUTHENTICATION_BACKENDS = [
+    "django.contrib.auth.backends.ModelBackend",
+    "allauth.account.auth_backends.AuthenticationBackend",
+]
+
 
 ROOT_URLCONF = "proj.urls"
 
@@ -81,8 +103,8 @@ DATABASES = {
         "NAME": "fpm_controller",
         "USER": "root",
         "PASSWORD": "",
-        "HOST": "127.0.0.1",
         "PORT": 5432,
+        "HOST": "127.0.0.1",
     }
 }
 
@@ -111,7 +133,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = "en-us"
 
-TIME_ZONE = "UTC"
+TIME_ZONE = "Asia/Kolkata"
 
 USE_I18N = True
 
@@ -129,11 +151,25 @@ STATIC_URL = "static/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 HUEY = {
-    'huey_class': 'huey.SqliteHuey',  # Huey implementation to use.
+    "huey_class": "huey.SqliteHuey",  # Huey implementation to use.
     "filename": "huey.db",
-    'name': "test",  # Use db name for huey.
-    "immediate": False
+    "name": "test",  # Use db name for huey.
+    "immediate": False,
 }
+
+# SITE_ID = 1
+ACCOUNT_DEFAULT_HTTP_PROTOCOL = "https"
+SOCIALACCOUNT_ADAPTER = "child_auth.adapters.SocialAccountAdapter"
+SOCIALACCOUNT_STORE_TOKENS = True
+SOCIALACCOUNT_LOGIN_ON_GET = True
+
+# OAUTH2_PROVIDER = {
+#     # "APPLICATION_MODEL": "child_auth.Application",
+#     # "skip_authorization": True
+# }
+OAUTH2_PROVIDER_APPLICATION_MODEL = "oauth2_provider.Application"
+
+BASE_SITE_DOMAIN = "https://5thtry.com"
 
 try:
     from .local_settings import *  # noqa
