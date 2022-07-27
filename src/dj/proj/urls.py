@@ -14,12 +14,27 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path, include
-from auth import views as auth_views
+from django.urls import path, include, re_path
+from child_auth import views as auth_views
+from child_auth import allauth_views
+from allauth.socialaccount.adapter import DefaultSocialAccountAdapter
+from allauth import urls
 
 urlpatterns = [
+    re_path(
+        r"^accounts/login/$", allauth_views.CustomLoginView.as_view(), name="login"
+    ),
+    path("accounts/", include("allauth.urls")),
     path("admin/", admin.site.urls),
     path("login/", auth_views.LoginView.as_view()),
+    path("login/callback/", auth_views.LoginCallbackView.as_view()),
+    path("login/<str:login_provider>", auth_views.LoginView.as_view()),
+    re_path(
+        r"^o/authorize/$",
+        auth_views.OverrideLoginAuthorizationView.as_view(),
+        name="authorize",
+    ),
+    path("o/", include("oauth2_provider.urls", namespace="oauth2_provider")),
     path("get-identities/", auth_views.GetIdentity.as_view()),
     path(r"v1/fpm/", include("fpm.urls")),
 ]

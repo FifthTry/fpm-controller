@@ -9,6 +9,8 @@ from textwrap import dedent
 from django.utils.text import slugify
 import subprocess
 from fpm import tasks
+from django.contrib.sites import models as site_models
+from oauth2_provider.models import Application
 
 instance_status = [
     ("initializing", "Instance Initializing"),
@@ -36,6 +38,12 @@ class Package(models.Model):
         DEPLOYED = "DEPLOYED", "Deployed"
         ARCHIVED = "ARCHIVED", "Archived"
 
+    class DomainMapStatusChoices(models.TextChoices):
+        INITIATED = "INITIATED", "Process Initiated"
+        WAITING = "WAITING", "SSL Certificate generation in progress"
+        FAILED = "FAILED", "SSL Certificate generation failed"
+        SUCCESS = "SUCCESS", "SSL Certificate generated sucessfully"
+
     name = models.CharField(
         unique=True, help_text="name of the FPM package", max_length=255
     )
@@ -61,6 +69,12 @@ class Package(models.Model):
         choices=PackageStatusChoices.choices,
         default=PackageStatusChoices.CONNECTED,
     )
+    site = models.OneToOneField(site_models.Site, on_delete=models.PROTECT)
+    domain_state = models.CharField(
+        choices=DomainMapStatusChoices.choices, max_length=10, null=True, blank=True
+    )
+    application = models.OneToOneField(Application, on_delete=models.PROTECT)
+    app_secret = models.CharField(max_length=128)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -68,6 +82,22 @@ class Package(models.Model):
         return self.name
 
     def save(self, *args, **kwargs) -> None:
+        if self.pk is None:
+            self.domain_state = self.DomainMapStatusChoices.INITIATED
+        if self.application is None:
+            application = Application()
+            self.app_secret = application.client_secret
+            self.application = application
+        else:
+            application = self.application
+            application.name = self.name
+            application.skip_authorization = True
+            application.client_type = Application.CLIENT_PUBLIC
+            application.authorization_grant_type = Application.GRANT_AUTHORIZATION_CODE
+            application.redirect_uris = (
+                f"https://{self.site.domain}/-/dj/login/callback/"
+            )
+        application.save()
         super().save(*args, **kwargs)
         self.refresh_from_db()
         (server_instance, is_new) = DedicatedInstance.objects.get_or_create(
@@ -75,6 +105,11 @@ class Package(models.Model):
         )
         if is_new:
             server_instance.initialize()
+        if self.domain_state != self.DomainMapStatusChoices.SUCCESS:
+            nginx_config_instance = tasks.nginx_config_generator(
+                self, self.dedicatedinstance_set.get()
+            )
+            nginx_config_instance()
 
 
 class PackageDomainMap(models.Model):
@@ -147,37 +182,6 @@ class DedicatedInstance(models.Model):
             self.package.name
         )
         self.status = self.InstanceStatus.PENDING
-        self.save()
-
-    def mark_ready(self, git_hash):
-        with open(settings.NGINX_CONFIG_DIR + f"{self.package.id}.conf", "w+") as f:
-            f.write(
-                dedent(
-                    """
-            server {
-                listen       80;
-                listen       [::]:80;
-                server_name %s.5thtry.com;
-                location / {
-                    proxy_pass http://%s:8000;
-                    proxy_http_version 1.1;
-                    proxy_set_header Host $host;
-                    proxy_set_header X-Real-IP $remote_addr;
-                    proxy_buffering off;
-                }
-            }
-            """
-                    % (slugify(self.package.slug), self.ip)
-                )
-            )
-        subprocess.Popen(
-            ["sudo /bin/systemctl restart nginx"],
-            shell=True,
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-        )
-        self.status = self.InstanceStatus.READY
         self.save()
 
 
