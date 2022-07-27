@@ -87,7 +87,72 @@ class LoginCallbackView(View):
         return response
 
 
+from github import Github
+
+
 class GetIdentity(View):
+    @classmethod
+    def resolve_github_like(cls, user, repo_name) -> bool:
+        github_accounts = user.socialaccount_set.filter(provider="github")
+        for github_account in github_accounts:
+            github_instance = Github(
+                github_account.socialtoken_set.latest("expires_at").token
+            )
+            is_starred = github_instance.get_user().has_in_starred(
+                github_instance.get_repo(repo_name)
+            )
+            if is_starred:
+                return is_starred
+        return False
+
+    @classmethod
+    def resolve_github_contributor(cls, user, repo_name) -> bool:
+        github_accounts = user.socialaccount_set.filter(provider="github")
+        for github_account in github_accounts:
+            try:
+                github_instance = Github(
+                    github_account.socialtoken_set.latest("expires_at").token
+                )
+                is_contributor = any(
+                    [
+                        contributor.login == github_instance.get_user().login
+                        for contributor in github_instance.get_repo(
+                            repo_name
+                        ).get_contributors()
+                    ]
+                )
+                if is_contributor:
+                    return is_contributor
+            except:
+                pass
+        return False
+
+    @classmethod
+    def resolve_github_watch(cls, user, repo_name) -> bool:
+        github_accounts = user.socialaccount_set.filter(provider="github")
+        for github_account in github_accounts:
+            github_instance = Github(
+                github_account.socialtoken_set.latest("expires_at").token
+            )
+            has_in_watched = github_instance.get_user().has_in_watched(
+                github_instance.get_repo(repo_name)
+            )
+            if has_in_watched:
+                return has_in_watched
+        return False
+
+    def evaluate_secondary_identities(self, request, session, *args, **kwargs):
+        req_params = request.GET.dict()
+        req_params.pop("sid")
+        resp = list()
+        for (key, value) in req_params.items():
+            fn_name = f"resolve_{key.replace('-', '_')}"
+            if hasattr(GetIdentity, fn_name) and getattr(GetIdentity, fn_name)(
+                session.user, value
+            ):
+                resp.append({key: value})
+        return resp
+
     def get(self, request, *args, **kwargs):
         session_id = request.GET.get("sid") or None
         if session_id is None:
@@ -102,7 +167,10 @@ class GetIdentity(View):
             "user-identities": [
                 {social_account.provider: socialaccount_user_display(social_account)}
                 for social_account in session_instance.user.socialaccount_set.all()
-            ],
+            ]
+            + self.evaluate_secondary_identities(
+                request, session_instance, args, kwargs
+            ),
         }
         return JsonResponse(resp)
 
