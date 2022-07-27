@@ -1,4 +1,4 @@
-from django.shortcuts import render
+from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
 from django.conf import settings
 from django.views import View
@@ -7,6 +7,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from django.http import HttpResponseBadRequest, HttpResponseRedirect, JsonResponse
 from . import forms as app_forms
+from . import models as child_auth_models
 from django.contrib.sites.shortcuts import get_current_site
 import pkce
 import urllib.parse
@@ -21,39 +22,28 @@ from oauth2_provider.models import get_application_model, get_access_token_model
 import json
 from django.utils import timezone
 from oauth2_provider.views.base import AuthorizationView
+from allauth.socialaccount.helpers import socialaccount_user_display
 
 
 @method_decorator(csrf_exempt, name="dispatch")
-class LoginView(FormView):
-    template_name = "sister_site_login.html"
-    form_class = app_forms.LoginWithFifthtryForm
-
-    def get_initial(self):
-        return {"next": self.request.GET.get("next") or ""}
-
-    def form_valid(self, form):
-        data = form.data
-        self.next = data.get("next") or None
-        self.provider = data["provider"]
-        return super().form_valid(form)
-
-    def get_success_url(self):
+class LoginView(View):
+    def get(self, request, provider, *args, **kwargs):
         site = get_current_site(self.request)
         current_package = site.package
         oauth_application = current_package.application
         code_verifier, code_challenge = pkce.generate_pkce_pair()
         url = f"{settings.BASE_SITE_DOMAIN}/o/authorize?"
+        next_url = request.META.get("HTTP_REFERER", f"https://{site.domain}/")
         params = {
             "client_id": oauth_application.client_id,
             "response_type": "code",
             "code_challenge": code_challenge,
-            "provider": self.provider,
-            "redirect_uri": f"https://{site.domain}/-/dj/login/callback/",
+            "provider": provider,
+            "redirect_uri": f"https://{site.domain}/-/dj/login/callback/?next={next_url}",
         }
         self.request.session["code_verifier"] = code_verifier
-        self.request.session["post_login_url"] = self.next
         self.request.session.modified = True
-        return url + urllib.parse.urlencode(params)
+        return HttpResponseRedirect(url + urllib.parse.urlencode(params))
 
 
 class LoginCallbackView(View):
@@ -63,6 +53,7 @@ class LoginCallbackView(View):
         current_package = site.package
         oauth_application = current_package.application
         code = request.GET["code"]
+        next = request.GET.get("next") or f"https://{site.domain}/"
         data = {
             "client_id": oauth_application.client_id,
             "client_secret": current_package.app_secret,
@@ -71,9 +62,8 @@ class LoginCallbackView(View):
             "code_verifier": pkce.get_code_challenge(
                 self.request.session.pop("code_verifier")
             ),
-            "redirect_uri": f"https://{site.domain}/-/dj/login/callback/",
+            "redirect_uri": f"https://{site.domain}/-/dj/login/callback/?next={next}",
         }
-        # TODO: Migrate to fifthtry.com from settings
         resp = requests.post(
             f"{settings.BASE_SITE_DOMAIN}/o/token/",
             data=data,
@@ -82,12 +72,19 @@ class LoginCallbackView(View):
                 "Content-Type": "application/x-www-form-urlencoded",
             },
         )
-        response = JsonResponse({"success": resp.ok, "data": data, "resp": resp.json()})
         if resp.ok:
-            response.set_cookie("cookie_name", "cookie_value")
-            # self.request.session.modified = True
+            resp_data = resp.json()
+            access_token_instance = get_access_token_model().objects.get(
+                token=resp_data["access_token"]
+            )
+            session_instance = child_auth_models.ChildWebsiteSessionId.objects.create(
+                user=access_token_instance.user, site=site
+            )
+            response = HttpResponseRedirect(next)
+            response.set_cookie("sid", session_instance.sid)
+        else:
+            response = HttpResponseBadRequest(resp.text)
         return response
-        # return super().get(request, *args, **kwargs)
 
 
 class GetIdentity(View):
@@ -97,9 +94,15 @@ class GetIdentity(View):
             return JsonResponse(
                 {"success": False, "reason": "`sid` not found in request"}, status=400
             )
+        session_instance = get_object_or_404(
+            child_auth_models.ChildWebsiteSessionId, sid=session_id
+        )
         resp = {
             "success": True,
-            "user-identities": [{"email": "yo@y.com"}, {"github": "foo"}],
+            "user-identities": [
+                {social_account.provider: socialaccount_user_display(social_account)}
+                for social_account in session_instance.user.socialaccount_set.all()
+            ],
         }
         return JsonResponse(resp)
 
@@ -117,7 +120,6 @@ class OverrideLoginAuthorizationView(AuthorizationView):
         if not existing_accounts.exists():
             next = f"{request.path}?{request.GET.urlencode()}"
             url_qs = urlencode({"process": "connect", "next": next})
-            # Here the user should be connected and the next should be set to authorize URL
             return HttpResponseRedirect(
                 f"{reverse(f'{provider_instance.id}_login')}?{url_qs}"
             )

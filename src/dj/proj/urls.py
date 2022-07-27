@@ -26,9 +26,8 @@ urlpatterns = [
     ),
     path("accounts/", include("allauth.urls")),
     path("admin/", admin.site.urls),
-    path("login/", auth_views.LoginView.as_view()),
     path("login/callback/", auth_views.LoginCallbackView.as_view()),
-    path("login/<str:login_provider>", auth_views.LoginView.as_view()),
+    path("login/<str:provider>/", auth_views.LoginView.as_view()),
     re_path(
         r"^o/authorize/$",
         auth_views.OverrideLoginAuthorizationView.as_view(),
