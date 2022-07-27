@@ -131,14 +131,34 @@ class GetIdentity(View):
     def resolve_github_watch(cls, user, repo_name) -> bool:
         github_accounts = user.socialaccount_set.filter(provider="github")
         for github_account in github_accounts:
-            github_instance = Github(
-                github_account.socialtoken_set.latest("expires_at").token
-            )
-            has_in_watched = github_instance.get_user().has_in_watched(
-                github_instance.get_repo(repo_name)
-            )
-            if has_in_watched:
-                return has_in_watched
+            try:
+                github_instance = Github(
+                    github_account.socialtoken_set.latest("expires_at").token
+                )
+                has_in_watched = github_instance.get_user().has_in_watched(
+                    github_instance.get_repo(repo_name)
+                )
+                if has_in_watched:
+                    return has_in_watched
+            except:
+                pass
+        return False
+    
+    @classmethod
+    def resolve_github_follows(cls, user, account_name) -> bool:
+        github_accounts = user.socialaccount_set.filter(provider="github")
+        for github_account in github_accounts:
+            try:
+                github_instance = Github(
+                    github_account.socialtoken_set.latest("expires_at").token
+                )
+                is_following = github_instance.get_user().has_in_following(
+                    github_instance.get_user(account_name)
+                )
+                if is_following:
+                    return is_following
+            except:
+                pass
         return False
 
     def evaluate_secondary_identities(self, request, session, *args, **kwargs):
