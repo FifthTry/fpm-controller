@@ -19,6 +19,7 @@ from urllib.parse import urlencode
 from oauth2_provider.exceptions import OAuthToolkitError
 from oauth2_provider.scopes import get_scopes_backend
 from oauth2_provider.models import get_application_model, get_access_token_model
+from allauth.socialaccount import models as allauth_social_models
 import json
 from django.utils import timezone
 from oauth2_provider.views.base import AuthorizationView
@@ -95,14 +96,43 @@ class GetIdentity(View):
     def resolve_github_like(cls, user, repo_name) -> bool:
         github_accounts = user.socialaccount_set.filter(provider="github")
         for github_account in github_accounts:
-            github_instance = Github(
-                github_account.socialtoken_set.latest("expires_at").token
-            )
-            is_starred = github_instance.get_user().has_in_starred(
-                github_instance.get_repo(repo_name)
-            )
-            if is_starred:
-                return is_starred
+            try:
+                github_instance = Github(
+                    github_account.socialtoken_set.latest("expires_at").token
+                )
+                is_starred = github_instance.get_user().has_in_starred(
+                    github_instance.get_repo(repo_name)
+                )
+                if is_starred:
+                    return is_starred
+            except:
+                pass
+        return False
+
+        # g.get_organization("fifthtry").get_team_by_slug("everyone").has_in_members(g.get_user(g.get_user().login))
+
+    @classmethod
+    def resolve_github_team(cls, user, repo_name) -> bool:
+        github_accounts = user.socialaccount_set.filter(provider="github")
+        org_name, team_name = repo_name.split("/", 1)
+        for github_account in github_accounts:
+            try:
+                github_instance = Github(
+                    github_account.socialtoken_set.latest("expires_at").token
+                )
+                is_member = (
+                    github_instance.get_organization(org_name)
+                    .get_team_by_slug(team_name)
+                    .has_in_members(
+                        github_instance.get_user(
+                            socialaccount_user_display(github_account)
+                        )
+                    )
+                )
+                if is_member:
+                    return is_member
+            except:
+                pass
         return False
 
     @classmethod
@@ -143,7 +173,7 @@ class GetIdentity(View):
             except:
                 pass
         return False
-    
+
     @classmethod
     def resolve_github_follows(cls, user, account_name) -> bool:
         github_accounts = user.socialaccount_set.filter(provider="github")
@@ -161,16 +191,96 @@ class GetIdentity(View):
                 pass
         return False
 
+    @classmethod
+    def resolve_github_sponsors(cls, user, account_name) -> bool:
+        github_accounts = user.socialaccount_set.filter(provider="github")
+        for github_account in github_accounts:
+            query = """query asd {
+                user(login: "%(account_name)s") {
+                    viewerIsSponsoring
+                }
+                organization(login: "%(account_name)s") {
+                    viewerIsSponsoring
+                }
+            }
+            """ % {
+                "account_name": account_name
+            }
+            resp = requests.post(
+                "https://api.github.com/graphql",
+                headers={
+                    "Authorization": f"Bearer {github_account.socialtoken_set.latest('expires_at').token}"
+                },
+                json={"query": query},
+            )
+            if resp.ok:
+                resp_data = resp.json()
+                is_sponsoring = any(
+                    [
+                        (resp_data["data"].get("user") or {}).get(
+                            "viewerIsSponsoring", False
+                        ),
+                        (resp_data["data"].get("organization") or {}).get(
+                            "viewerIsSponsoring", False
+                        ),
+                    ]
+                )
+                if is_sponsoring:
+                    return is_sponsoring
+        return False
+
+    @classmethod
+    def _check_tg_group_againt_scope(cls, user, group_id, scope) -> bool:
+        tg_accounts = user.socialaccount_set.filter(provider="telegram")
+        telegram_token = settings.SOCIALACCOUNT_PROVIDERS["telegram"]["TOKEN"]
+        req = requests.get(
+            f"https://api.telegram.org/bot{telegram_token}/getChat",
+            params={
+                "chat_id": group_id,
+            },
+        )
+        if req.ok:
+            data = req.json()
+            if data.get("ok") is True:
+                for telegram_account in tg_accounts:
+                    chat_member_request = requests.get(
+                        f"https://api.telegram.org/bot{telegram_token}/getChatMember",
+                        params={
+                            "chat_id": group_id,
+                            "user_id": telegram_account.uid,
+                        },
+                    )
+                    if chat_member_request.ok:
+                        data = chat_member_request.json()
+                        if data.get("ok") is True:
+                            return data.get("result", {}).get("status") in scope
+        return False
+
+    @classmethod
+    def resolve_telegram_admin(cls, user, group_id) -> bool:
+        return cls._check_tg_group_againt_scope(
+            user, group_id, scope=["creator", "administrator"]
+        )
+
+    @classmethod
+    def resolve_telegram_group(cls, user, group_id) -> bool:
+        return cls._check_tg_group_againt_scope(
+            user, group_id, scope=["member", "administrator", "creator", "restricted"]
+        )
+
     def evaluate_secondary_identities(self, request, session, *args, **kwargs):
-        req_params = request.GET.dict()
-        req_params.pop("sid")
+        # req_params = request.GET.dict()
+        # req_params.pop("sid")
+        # assert False, [() for k in request.GET]
         resp = list()
-        for (key, value) in req_params.items():
-            fn_name = f"resolve_{key.replace('-', '_')}"
-            if hasattr(GetIdentity, fn_name) and getattr(GetIdentity, fn_name)(
-                session.user, value
-            ):
-                resp.append({key: value})
+        for key in request.GET:
+            # assert False, (key, value_list)
+            for value in request.GET.getlist(key):
+                fn_name = f"resolve_{key.replace('-', '_')}"
+                if hasattr(GetIdentity, fn_name) and getattr(GetIdentity, fn_name)(
+                    session.user, value
+                ):
+                    resp.append({key: value})
         return resp
 
     def get(self, request, *args, **kwargs):
@@ -197,7 +307,6 @@ class GetIdentity(View):
 
 class OverrideLoginAuthorizationView(AuthorizationView):
     def get(self, request, *args, **kwargs):
-
         try:
             provider_instance = providers.registry.by_id(request.GET["provider"])
         except KeyError:
@@ -211,4 +320,14 @@ class OverrideLoginAuthorizationView(AuthorizationView):
             return HttpResponseRedirect(
                 f"{reverse(f'{provider_instance.id}_login')}?{url_qs}"
             )
+        # elif request.session.get("explicit_social_auth_attempt", 0) == 0:
+        #     request.session["explicit_social_auth_attempt"] = self.request.session.get("explicit_social_auth_attempt", 0) + 1
+        #     request.session.modified = True
+        #     next = f"{request.path}?{request.GET.urlencode()}"
+        #     url_qs = urlencode({"process": "login", "next": next})
+        #     return HttpResponseRedirect(
+        #         f"{reverse(f'{provider_instance.id}_login')}?{url_qs}"
+        #     )
+        # request.session["explicit_social_auth_attempt"] = request.session.get("explicit_social_auth_attempt", 1) - 1
+        # request.session.modified = True
         return super().get(request, *args, **kwargs)
