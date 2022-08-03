@@ -225,7 +225,10 @@ SOCIALACCOUNT_PROVIDERS = {
             "read:org",
         ],
     },
-    "telegram": {"TOKEN": "<BOT_TOKEN_GOES_HERE>"},
+    "telegram": {
+        "TOKEN": "<Bot_token>",
+        "BOT_NAME": "<Bot_name>",
+    },
 }
 # OAUTH2_PROVIDER = {
 #     # "APPLICATION_MODEL": "child_auth.Application",

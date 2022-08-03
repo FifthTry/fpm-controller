@@ -4,6 +4,7 @@ from allauth.socialaccount import providers
 from django.http import HttpResponseRedirect
 from django.urls import reverse
 from django.template.response import TemplateResponse
+from django.conf import settings
 
 
 class CustomLoginView(LoginView):
@@ -24,7 +25,12 @@ class CustomLoginView(LoginView):
                         return TemplateResponse(
                             request,
                             "telegram_login.html",
-                            {"callback_url": callback_url},
+                            {
+                                "callback_url": callback_url,
+                                "bot_name": settings.SOCIALACCOUNT_PROVIDERS[
+                                    "telegram"
+                                ]["BOT_NAME"],
+                            },
                         )
                     else:
                         url_qs = urlencode({"process": "login", "next": next})
@@ -32,3 +38,7 @@ class CustomLoginView(LoginView):
                         f"{reverse(f'{provider_instance.id}_login')}?{url_qs}"
                     )
         return super().get(request, *args, **kwargs)
+
+
+def socialaccount_str(instance):
+    return ""

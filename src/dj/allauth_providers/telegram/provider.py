@@ -27,5 +27,10 @@ class TelegramProvider(Provider):
             ret["username"] = data.get("username")
         return ret
 
+    def sociallogin_from_response(self, request, response):
+        sociallogin = super().sociallogin_from_response(request, response)
+        # sociallogin.
+        return sociallogin
+
 
 provider_classes = [TelegramProvider]

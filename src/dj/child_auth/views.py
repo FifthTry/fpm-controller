@@ -283,6 +283,19 @@ class GetIdentity(View):
                     resp.append({key: value})
         return resp
 
+    def get_social_identities(self, social_accounts):
+        resp = []
+        for social_account in social_accounts:
+            if social_account.provider == "telegram":
+                resp.append(
+                    {social_account.provider: social_account.extra_data["username"]}
+                )
+            elif social_account.provider == "github":
+                resp.append(
+                    {social_account.provider: social_account.extra_data["login"]}
+                )
+        return resp
+
     def get(self, request, *args, **kwargs):
         session_id = request.GET.get("sid") or None
         if session_id is None:
@@ -294,10 +307,9 @@ class GetIdentity(View):
         )
         resp = {
             "success": True,
-            "user-identities": [
-                {social_account.provider: socialaccount_user_display(social_account)}
-                for social_account in session_instance.user.socialaccount_set.all()
-            ]
+            "user-identities": self.get_social_identities(
+                session_instance.user.socialaccount_set.all()
+            )
             + self.evaluate_secondary_identities(
                 request, session_instance, args, kwargs
             ),
