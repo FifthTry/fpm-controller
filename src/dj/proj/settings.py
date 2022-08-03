@@ -225,7 +225,12 @@ SOCIALACCOUNT_PROVIDERS = {
             "read:org",
         ],
     },
-    "telegram": {"TOKEN": "<BOT_TOKEN_GOES_HERE>"},
+    "telegram": {
+        # "TOKEN": "5585776803:AAHI4-FAF3VkfOBc9op_sLgnwn9D2Kafl9k"
+        # "NAME": "FifthTryDotCom_bot"
+        "TOKEN": "2072870174:AAE_1Qr69LbjJ1crv5rWY0DyNR1zPaDc6L0",
+        "BOT_NAME": "shobhit_home_bot",
+    },
 }
 # OAUTH2_PROVIDER = {
 #     # "APPLICATION_MODEL": "child_auth.Application",
