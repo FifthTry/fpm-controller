@@ -91,5 +91,5 @@ class TelegramWebhookCallback(View):
                     response["chat_id"] = instance.chat_id
                     response[
                         "text"
-                    ] = f"Thank you for installing FifthtryBot! Your chat ID is {instance.chat_id}"
+                    ] = f"Thank you for installing FifthtryBot! Please use the name **{instance.user_friendly_name}** on Fifthtry."
         return JsonResponse(response)

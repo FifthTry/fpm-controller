@@ -7,3 +7,4 @@ django-oauth-toolkit
 pkce
 djangorestframework
 PyGithub
+haikunator

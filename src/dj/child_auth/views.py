@@ -24,6 +24,7 @@ import json
 from django.utils import timezone
 from oauth2_provider.views.base import AuthorizationView
 from allauth.socialaccount.helpers import socialaccount_user_display
+from django.db.models import Q
 
 
 @method_decorator(csrf_exempt, name="dispatch")
@@ -233,27 +234,36 @@ class GetIdentity(View):
     def _check_tg_group_againt_scope(cls, user, group_id, scope) -> bool:
         tg_accounts = user.socialaccount_set.filter(provider="telegram")
         telegram_token = settings.SOCIALACCOUNT_PROVIDERS["telegram"]["TOKEN"]
-        req = requests.get(
-            f"https://api.telegram.org/bot{telegram_token}/getChat",
-            params={
-                "chat_id": group_id,
-            },
+        try:
+            group_id_num = int(group_id)
+        except ValueError:
+            group_id_num = 0
+        resp = child_auth_models.TelegramChat.objects.filter(
+            Q(user_friendly_name=group_id) | Q(chat_id=group_id_num)
         )
-        if req.ok:
-            data = req.json()
-            if data.get("ok") is True:
-                for telegram_account in tg_accounts:
-                    chat_member_request = requests.get(
-                        f"https://api.telegram.org/bot{telegram_token}/getChatMember",
-                        params={
-                            "chat_id": group_id,
-                            "user_id": telegram_account.uid,
-                        },
-                    )
-                    if chat_member_request.ok:
-                        data = chat_member_request.json()
-                        if data.get("ok") is True:
-                            return data.get("result", {}).get("status") in scope
+        if resp.exists():
+            group_id = resp.first().chat_id
+            req = requests.get(
+                f"https://api.telegram.org/bot{telegram_token}/getChat",
+                params={
+                    "chat_id": group_id,
+                },
+            )
+            if req.ok:
+                data = req.json()
+                if data.get("ok") is True:
+                    for telegram_account in tg_accounts:
+                        chat_member_request = requests.get(
+                            f"https://api.telegram.org/bot{telegram_token}/getChatMember",
+                            params={
+                                "chat_id": group_id,
+                                "user_id": telegram_account.uid,
+                            },
+                        )
+                        if chat_member_request.ok:
+                            data = chat_member_request.json()
+                            if data.get("ok") is True:
+                                return data.get("result", {}).get("status") in scope
         return False
 
     @classmethod
@@ -297,7 +307,7 @@ class GetIdentity(View):
         return resp
 
     def get(self, request, *args, **kwargs):
-        session_id = request.GET.get("sid") or None
+        session_id = request.GET.get("sid") or request.COOKIES.get("sid") or None
         if session_id is None:
             return JsonResponse(
                 {"success": False, "reason": "`sid` not found in request"}, status=400
