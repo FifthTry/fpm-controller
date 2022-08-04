@@ -19,10 +19,18 @@ from child_auth import views as auth_views
 from child_auth import allauth_views
 from allauth.socialaccount.adapter import DefaultSocialAccountAdapter
 from allauth import urls
+from allauth_providers.telegram import views as tg_views
+from django.views.decorators.csrf import csrf_exempt
+
 
 urlpatterns = [
     re_path(
         r"^accounts/login/$", allauth_views.CustomLoginView.as_view(), name="login"
+    ),
+    path(
+        "accounts/telegram/webhook-callback/",
+        tg_views.TelegramWebhookCallback.as_view(),
+        name="telegram_webhook",
     ),
     path("accounts/", include("allauth.urls")),
     path("admin/", admin.site.urls),
