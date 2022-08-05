@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     "allauth.account",
     "allauth.socialaccount",
     "allauth.socialaccount.providers.github",
+    "allauth.socialaccount.providers.discord",
     "allauth_providers.telegram",
     "huey.contrib.djhuey",
     "fpm",
