@@ -21,6 +21,7 @@ from allauth.socialaccount.adapter import DefaultSocialAccountAdapter
 from allauth import urls
 from allauth_providers.telegram import views as tg_views
 from django.views.decorators.csrf import csrf_exempt
+from fpm import views as fpm_views
 
 
 urlpatterns = [
@@ -43,5 +44,6 @@ urlpatterns = [
     ),
     path("o/", include("oauth2_provider.urls", namespace="oauth2_provider")),
     path("get-identities/", auth_views.GetIdentity.as_view()),
+    path("", fpm_views.IndexView.as_view()),
     path(r"v1/fpm/", include("fpm.urls")),
 ]

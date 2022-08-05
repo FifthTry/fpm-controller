@@ -3,6 +3,7 @@ from django.http import JsonResponse
 from fpm.models import DedicatedInstance
 from fpm import jobs as fpm_jobs
 from fpm import tasks as fpm_tasks
+from django.views.generic import TemplateView
 
 
 def success(data, status=200):
@@ -67,3 +68,7 @@ def get_package(req: django.http.HttpRequest):
             "base": "https://github.com/",
         }
     )
+
+
+class IndexView(TemplateView):
+    template_name = "/"
