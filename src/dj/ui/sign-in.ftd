@@ -2,6 +2,6 @@
 
 -- ft.page: 
 
--- ft.login: Login
+-- ft.login: Sign In
 email-label: *Email:
 password-label: *Password:

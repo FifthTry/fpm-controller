@@ -8,6 +8,8 @@ from django.conf import settings
 
 
 class CustomLoginView(LoginView):
+    template_name = "/sign-in/"
+
     def get(self, request, *args, **kwargs):
         next = request.GET.get("next") or None
         if next:
