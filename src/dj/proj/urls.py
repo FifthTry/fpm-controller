@@ -20,6 +20,7 @@ from child_auth import allauth_views
 from allauth.socialaccount.adapter import DefaultSocialAccountAdapter
 from allauth import urls
 from allauth_providers.telegram import views as tg_views
+from allauth_providers.discord import views as discord_views
 from django.views.decorators.csrf import csrf_exempt
 from fpm import views as fpm_views
 
@@ -32,6 +33,11 @@ urlpatterns = [
         "accounts/telegram/webhook-callback/",
         tg_views.TelegramWebhookCallback.as_view(),
         name="telegram_webhook",
+    ),
+    path(
+        "accounts/discord/webhook-callback/",
+        discord_views.DiscordWebhookCallback.as_view(),
+        name="discord_bot_webhook",
     ),
     path("accounts/", include("allauth.urls")),
     path("admin/", admin.site.urls),

@@ -20,6 +20,7 @@ from oauth2_provider.exceptions import OAuthToolkitError
 from oauth2_provider.scopes import get_scopes_backend
 from oauth2_provider.models import get_application_model, get_access_token_model
 from allauth.socialaccount import models as allauth_social_models
+from allauth_providers.discord import models as discord_models
 import json
 from django.utils import timezone
 from oauth2_provider.views.base import AuthorizationView
@@ -278,6 +279,84 @@ class GetIdentity(View):
             user, group_id, scope=["member", "administrator", "creator", "restricted"]
         )
 
+    @classmethod
+    def resolve_discord_server(cls, user, server_id) -> bool:
+        try:
+            server_id_num = int(server_id)
+        except ValueError:
+            server_id_num = 0
+        try:
+            installation_instance = discord_models.DiscordBotInstallation.objects.get(
+                Q(user_friendly_name=server_id) | Q(guild_id=server_id_num)
+            )
+        except discord_models.DiscordBotInstallation.DoesNotExist:
+            return False
+        BOT_TOKEN = settings.SOCIALACCOUNT_PROVIDERS["discord"]["BOT_TOKEN"]
+        for discord_account in user.socialaccount_set.filter(provider="discord"):
+            resp = requests.get(
+                f"https://discord.com/api/guilds/{installation_instance.guild_id}/members/{discord_account.uid}",
+                headers={"Authorization": f"Bot {BOT_TOKEN}"},
+            )
+            if resp.ok:
+                return True
+        return False
+
+    @classmethod
+    def resolve_discord_role(cls, user, query) -> bool:
+        requested_role, server_id = query.rsplit("@", 1)
+        try:
+            server_id_num = int(server_id)
+        except ValueError:
+            server_id_num = 0
+        try:
+            installation_instance = discord_models.DiscordBotInstallation.objects.get(
+                Q(user_friendly_name=server_id) | Q(guild_id=server_id_num)
+            )
+        except discord_models.DiscordBotInstallation.DoesNotExist:
+            return False
+        BOT_TOKEN = settings.SOCIALACCOUNT_PROVIDERS["discord"]["BOT_TOKEN"]
+        # Check the role in db, if not available sync the DB
+        try:
+            requested_role_instance = discord_models.GuildRoleMap.objects.get(
+                guild=installation_instance, role_name=requested_role
+            )
+        except discord_models.GuildRoleMap.DoesNotExist:
+            # Sync the roles again and check for role. If not available, return False
+            resp = requests.get(
+                f"https://discord.com/api/guilds/{installation_instance.guild_id}",
+                headers={"Authorization": f"Bot {BOT_TOKEN}"},
+            )
+            if resp.ok:
+                data = resp.json()
+                found_role = False
+                for role in data["roles"]:
+                    (ins, _) = discord_models.GuildRoleMap.objects.update_or_create(
+                        role_id=role["id"],
+                        guild=installation_instance,
+                        defaults={"role_name": role["name"]},
+                    )
+                    if ins.role_name == requested_role:
+                        requested_role_instance = ins
+                        found_role = True
+                if found_role is False:
+                    return False
+
+        for discord_account in user.socialaccount_set.filter(provider="discord"):
+            resp = requests.get(
+                f"https://discord.com/api/guilds/{installation_instance.guild_id}/members/{discord_account.uid}",
+                headers={"Authorization": f"Bot {BOT_TOKEN}"},
+            )
+            if resp.ok:
+                if requested_role_instance.role_name == "@everyone":
+                    return True
+                data = resp.json()
+                if (
+                    requested_role_instance.role_id in data["roles"]
+                    or str(requested_role_instance.role_id) in data["roles"]
+                ):
+                    return True
+        return False
+
     def evaluate_secondary_identities(self, request, session, *args, **kwargs):
         # req_params = request.GET.dict()
         # req_params.pop("sid")
@@ -303,6 +382,12 @@ class GetIdentity(View):
             elif social_account.provider == "github":
                 resp.append(
                     {social_account.provider: social_account.extra_data["login"]}
+                )
+            elif social_account.provider == "discord":
+                resp.append(
+                    {
+                        social_account.provider: f'{social_account.extra_data["username"]} #{social_account.extra_data["discriminator"]}'
+                    }
                 )
         return resp
 
