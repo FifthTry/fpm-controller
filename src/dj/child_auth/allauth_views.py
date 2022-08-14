@@ -8,7 +8,7 @@ from django.conf import settings
 
 
 class CustomLoginView(LoginView):
-    template_name = "/sign-in/"
+    template_name = "sign-in.html"
 
     def get(self, request, *args, **kwargs):
         next = request.GET.get("next") or None
@@ -39,6 +39,8 @@ class CustomLoginView(LoginView):
                     return HttpResponseRedirect(
                         f"{reverse(f'{provider_instance.id}_login')}?{url_qs}"
                     )
+        # else:
+        #     return self.render_to_response({})
         return super().get(request, *args, **kwargs)
 
 

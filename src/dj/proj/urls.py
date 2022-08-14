@@ -51,5 +51,6 @@ urlpatterns = [
     path("o/", include("oauth2_provider.urls", namespace="oauth2_provider")),
     path("get-identities/", auth_views.GetIdentity.as_view()),
     path("", fpm_views.IndexView.as_view()),
+    path("create-new/", fpm_views.CreateNewView.as_view()),
     path(r"v1/fpm/", include("fpm.urls")),
 ]

@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+{% load tailwind_filters %}
+
+{% block body %}
+<div class="container mx-auto pt-10">
+    <div class="flex mb-10">
+        <div class="grow">
+            <h1 class="text-4xl">Create New</h1>
+        </div>
+    </div>
+    <form method="POST">
+        {% csrf_token %}
+        {{ form|crispy }}
+        <div class="flex flex-row content-end">
+            <button type="submit"
+                class="w-2/12 px-4 py-2 text-lg font-semibold text-white transition-colors duration-300 bg-blue-500 rounded-md shadow hover:bg-blue-600 focus:outline-none focus:ring-blue-200 focus:ring-4">
+                Create
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock body %}

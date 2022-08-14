@@ -1,7 +1,10 @@
 -- import: ft
+-- import: fifthtry.github.io/fpm-controller-ui/dashboard
 
 -- ft.page: 
 
--- ft.login: Login
-email-label: *Email:
-password-label: *Password:
+-- dashboard.create-package-button: &#65291; New
+button-link: create-package/
+
+-- dashboard.packages-list:
+package-list: $package-list

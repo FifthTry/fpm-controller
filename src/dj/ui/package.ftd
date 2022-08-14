@@ -1,0 +1,19 @@
+-- import: ft
+-- import: fifthtry.github.io/fpm-controller-ui/package
+
+
+-- base.page:
+
+-- package.packages-list:
+package-list: $package-list
+
+-- package.remove-package:
+package-name: $package-to-delete
+
+-- package.overlay:
+if: $show-delete-dialog
+
+-- package.delete-dialog:
+package-name: $package-to-delete
+
+

@@ -15,7 +15,7 @@ import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-
+FTD_DIR = BASE_DIR.joinpath("ui")
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.0/howto/deployment/checklist/
 
@@ -38,6 +38,8 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django.contrib.sites",
+    "crispy_forms",
+    "crispy_tailwind",
     "oauth2_provider",
     "rest_framework",
     "allauth",
@@ -50,6 +52,12 @@ INSTALLED_APPS = [
     "fpm",
     "child_auth",
 ]
+
+
+CRISPY_ALLOWED_TEMPLATE_PACKS = "tailwind"
+
+CRISPY_TEMPLATE_PACK = "tailwind"
+
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "oauth2_provider.contrib.rest_framework.OAuth2Authentication",
@@ -78,14 +86,14 @@ AUTHENTICATION_BACKENDS = [
 ROOT_URLCONF = "proj.urls"
 
 TEMPLATES = [
-    {
-        "BACKEND": "ftd_django.TemplateBackend",
-        "DIRS": ["ui"],
-        "OPTIONS": {"PROCESSORS": []},
-    },
+    # {
+    #     "BACKEND": "ftd_django.TemplateBackend",
+    #     "DIRS": [str(FTD_DIR)],
+    #     "OPTIONS": {"PROCESSORS": []},
+    # },
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        "DIRS": [str(BASE_DIR.joinpath("templates"))],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -243,7 +251,14 @@ SOCIALACCOUNT_PROVIDERS = {
 OAUTH2_PROVIDER_APPLICATION_MODEL = "oauth2_provider.Application"
 
 BASE_SITE_DOMAIN = "https://5thtry.com"
-
+LOGIN_REDIRECT_URL = "/"
+ACCOUNT_LOGOUT_ON_GET = True
+ACCOUNT_AUTHENTICATION_METHOD = "email"
+ACCOUNT_EMAIL_REQUIRED = True
+SOCIALACCOUNT_EMAIL_REQUIRED = False
+ACCOUNT_USERNAME_REQUIRED = False
+# Make this mandatory for production
+ACCOUNT_EMAIL_VERIFICATION = "none"
 try:
     from .local_settings import *  # noqa
 except ModuleNotFoundError:

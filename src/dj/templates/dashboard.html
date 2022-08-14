@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+{% load tailwind_filters %}
+
+{% block body %}
+<!-- This is an example component -->
+<div class="container mx-auto pt-10">
+    <div class="flex mb-10">
+        <div class="grow">
+            <h1 class="text-4xl">My Projects</h1>
+        </div>
+        <div class="flex-none">
+            <a href="/create-new/"
+                class="w-full px-4 py-2 text-lg font-semibold text-white transition-colors duration-300 bg-blue-500 rounded-md shadow hover:bg-blue-600 focus:outline-none focus:ring-blue-200 focus:ring-4">&#43;&nbsp;New</a>
+        </div>
+    </div>
+    {% if deployed_projects %}
+    {% for project in deployed_projects %}
+    <div class="rounded-xl border p-5 shadow-md w-12/12 bg-white mb-3">
+        <div class="mt-4 mb-6">
+            <div class="flex flex-row content-center items-center mb-3">
+                <div class="flex-grow text-xl font-bold">{{ project.name }}</div>
+                <div class="flex-shrink-0 ml-3 flex flex-row">
+                    <a href="https://{{project.site.domain}}" target="_blank" class="flex-shrink-0">Open</a>
+                    <a href="/edit-package/{{project.id}}" class="flex-shrink-0">&nbsp;&nbsp;Edit</a>
+                </div>
+            </div>
+
+            <div class="text-sm text-neutral-600">{{ project.description }}</div>
+        </div>
+
+        <div>
+            <div class="flex items-center justify-between text-slate-500">
+                <div class="flex space-x-4 md:space-x-8">
+                    <div class="flex items-center transition hover:text-slate-600">
+                        {{ project.get_status_display }}
+                    </div>
+                    <div class="flex items-center transition hover:text-slate-600">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+    {% else %}
+    <p class="text-gray-400">You do not have any active projects. Please create one by clicking on the `New` button</p>
+    {% endif %}
+
+</div>
+
+{% endblock body %}

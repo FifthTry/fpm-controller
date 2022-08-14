@@ -11,6 +11,8 @@ import subprocess
 from fpm import tasks
 from django.contrib.sites import models as site_models
 from oauth2_provider.models import Application
+from django.conf import settings
+from django.db import transaction
 
 instance_status = [
     ("initializing", "Instance Initializing"),
@@ -44,6 +46,7 @@ class Package(models.Model):
         FAILED = "FAILED", "SSL Certificate generation failed"
         SUCCESS = "SUCCESS", "SSL Certificate generated sucessfully"
 
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     name = models.CharField(
         unique=True, help_text="name of the FPM package", max_length=255
     )
@@ -84,22 +87,22 @@ class Package(models.Model):
     def save(self, *args, **kwargs) -> None:
         if self.pk is None:
             self.domain_state = self.DomainMapStatusChoices.INITIATED
-        if self.application is None:
-            application = Application()
-            self.app_secret = application.client_secret
-            self.application = application
-        else:
-            application = self.application
-            application.name = self.name
-            application.skip_authorization = True
-            application.client_type = Application.CLIENT_PUBLIC
-            application.authorization_grant_type = Application.GRANT_AUTHORIZATION_CODE
-            application.redirect_uris = (
-                f"https://{self.site.domain}/-/dj/login/callback/"
+            self.application = Application()
+            self.app_secret = self.application.client_secret
+            self.site = site_models.Site(
+                name=self.name, domain=f"{self.slug}.5thtry.com"
             )
-        application.save()
-        super().save(*args, **kwargs)
-        self.refresh_from_db()
+        application = self.application
+        application.name = self.name
+        application.skip_authorization = True
+        application.client_type = Application.CLIENT_PUBLIC
+        application.authorization_grant_type = Application.GRANT_AUTHORIZATION_CODE
+        application.redirect_uris = f"https://{self.site.domain}/-/dj/login/callback/"
+        with transaction.atomic():
+            self.site.save()
+            application.save()
+            super().save(*args, **kwargs)
+            self.refresh_from_db()
         (server_instance, is_new) = DedicatedInstance.objects.get_or_create(
             package=self,
         )
