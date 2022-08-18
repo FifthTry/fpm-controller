@@ -86,11 +86,11 @@ AUTHENTICATION_BACKENDS = [
 ROOT_URLCONF = "proj.urls"
 
 TEMPLATES = [
-    # {
-    #     "BACKEND": "ftd_django.TemplateBackend",
-    #     "DIRS": [str(FTD_DIR)],
-    #     "OPTIONS": {"PROCESSORS": []},
-    # },
+    {
+        "BACKEND": "ftd_django.TemplateBackend",
+        "DIRS": [str(FTD_DIR)],
+        "OPTIONS": {"PROCESSORS": []},
+    },
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
         "DIRS": [str(BASE_DIR.joinpath("templates"))],

@@ -96,8 +96,8 @@ class CreateNewView(FormView):
     success_url = "/"
 
     def form_valid(self, form):
-        form = form.save(commit=False)
-        form.slug = slugify(form.name)
-        form.owner = self.request.user
-        form.save()
+        instance = form.save(commit=False)
+        instance.slug = slugify(instance.name)
+        instance.owner = self.request.user
+        instance.save()
         return HttpResponseRedirect(self.get_success_url())

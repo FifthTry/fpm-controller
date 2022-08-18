@@ -3,5 +3,14 @@
 -- ft.page: 
 
 -- ft.login: Sign In
-email-label: *Email:
-password-label: *Password:
+email-label: Email:
+password-label: Password:
+form-data: login-form-api
+
+
+-- object login-form-api:
+function: http
+method: post
+url: /accounts/login/
+email: $email
+password: $password
