@@ -29,6 +29,9 @@ urlpatterns = [
     re_path(
         r"^accounts/login/$", allauth_views.CustomLoginView.as_view(), name="login"
     ),
+    re_path(
+        r"^accounts/signup/$", allauth_views.CustomSignUpView.as_view(), name="login"
+    ),
     path(
         "accounts/telegram/webhook-callback/",
         tg_views.TelegramWebhookCallback.as_view(),

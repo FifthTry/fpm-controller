@@ -63,3 +63,24 @@ class CustomLoginView(LoginView):
 
 def socialaccount_str(instance):
     return ""
+
+
+@method_decorator(csrf_exempt, name="dispatch")
+class CustomSignUpView(SignupView):
+    template_name = "/sign-up/"
+
+    def get_context_data(self, **kwargs):
+        return {}
+
+    def post(self, request, *args, **kwargs):
+        body = request.body.decode("utf-8")
+        json_body = json.loads(body)
+        form_class = self.get_form_class()
+        form = form_class(json_body)
+        if form.is_valid():
+            original_resp = self.form_valid(form)
+            resp = JsonResponse({})
+            resp.cookies = original_resp.cookies
+        else:
+            resp = JsonResponse({k: [x for x in v] for (k, v) in form.errors.items()})
+        return resp
