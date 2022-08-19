@@ -1,12 +1,16 @@
+import json
 from allauth.account.views import LoginView, SignupView
 from urllib.parse import parse_qsl, urlencode, urlparse
 from allauth.socialaccount import providers
-from django.http import HttpResponseRedirect
+from django.http import HttpResponseRedirect, JsonResponse
 from django.urls import reverse
 from django.template.response import TemplateResponse
 from django.conf import settings
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
 
 
+@method_decorator(csrf_exempt, name="dispatch")
 class CustomLoginView(LoginView):
     template_name = "/sign-in/"
 
@@ -42,6 +46,19 @@ class CustomLoginView(LoginView):
         else:
             return self.render_to_response({})
         return super().get(request, *args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        body = request.body.decode("utf-8")
+        json_body = json.loads(body)
+        form_class = self.get_form_class()
+        form = form_class(json_body, request=request)
+        if form.is_valid():
+            response = self.form_valid(form)
+            resp = JsonResponse({"redirect": "/"})
+            resp.cookies = response.cookies
+        else:
+            resp = JsonResponse({k: [x for x in v] for (k, v) in form.errors.items()})
+        return resp
 
 
 def socialaccount_str(instance):

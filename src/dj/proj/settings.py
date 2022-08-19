@@ -89,7 +89,12 @@ TEMPLATES = [
     {
         "BACKEND": "ftd_django.TemplateBackend",
         "DIRS": [str(FTD_DIR)],
-        "OPTIONS": {"PROCESSORS": []},
+        "OPTIONS": {
+            "PROCESSORS": [
+                "fpm.processors.csrf_token",
+                "fpm.processors.deployed_projects",
+            ]
+        },
     },
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",

@@ -1,3 +1,4 @@
+import json
 import django.http
 from django.http import JsonResponse, HttpResponseRedirect
 from fpm import models as fpm_models
@@ -72,32 +73,36 @@ def get_package(req: django.http.HttpRequest):
 
 
 class IndexView(TemplateView):
-    template_name = "dashboard.html"
+    template_name = "/dashboard/"
 
     def dispatch(self, request, *args, **kwargs):
         if not request.user.is_authenticated:
             return HttpResponseRedirect("/accounts/login/")
         return super().dispatch(request, *args, **kwargs)
 
-    def get_context_data(self, **kwargs):
-        context_data = super().get_context_data(**kwargs)
-        context_data["deployed_projects"] = fpm_models.Package.objects.filter(
-            owner=self.request.user
-        )
-        return context_data
-
 
 from django.utils.text import slugify
 
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
 
-class CreateNewView(FormView):
-    template_name: str = "create-new.html"
+
+@method_decorator(csrf_exempt, name="dispatch")
+class CreateNewView(TemplateView):
+    template_name: str = "/create-package/"
     form_class = fpm_forms.PackageForm
-    success_url = "/"
+    # success_url = "/"
 
-    def form_valid(self, form):
-        instance = form.save(commit=False)
-        instance.slug = slugify(instance.name)
-        instance.owner = self.request.user
-        instance.save()
-        return HttpResponseRedirect(self.get_success_url())
+    def post(self, request, *args, **kwargs):
+        data = json.loads(request.body.decode("utf-8"))
+        form_instance = fpm_forms.PackageForm(data)
+        if not form_instance.is_valid():
+            return JsonResponse(
+                {k: [x for x in v] for (k, v) in form_instance.errors.items()}
+            )
+        else:
+            instance = form_instance.save(commit=False)
+            instance.slug = slugify(instance.name)
+            instance.owner = self.request.user
+            instance.save()
+        return JsonResponse({})
