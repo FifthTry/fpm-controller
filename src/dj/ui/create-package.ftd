@@ -23,7 +23,7 @@ border-color: $black
 placeholder: Select Plan(free)
 
 
--- ftd.text: Sign In
+-- ftd.text: Create new Package
 color: $black
 $on-click$: message-host $login-form-api
 
