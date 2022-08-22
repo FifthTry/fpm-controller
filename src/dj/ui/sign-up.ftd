@@ -1,45 +1,5 @@
--- ftd.color black:
-light: black
-dark: black
+-- import: fifthtry.github.io/fpm-controller-ui/sign-up
 
--- optional string email:
-$always-include$: true
-
--- optional string password1:
-$always-include$: true
-
--- optional string password2:
-$always-include$: true
-
--- string csrf_token:
-$processor$: csrf_token
-$always-include$: true
-
--- ftd.input:
-$on-change$: $email=$VALUE
-border-color: $black
-placeholder: Enter Email
-
--- ftd.input:
-$on-change$: $password1=$VALUE
-border-color: $black
-placeholder: Enter Password
-
--- ftd.input:
-$on-change$: $password2=$VALUE
-border-color: $black
-placeholder: Confirm Password
-
-
--- ftd.text: Sign Up
-color: $black
-$on-click$: message-host $login-form-api
-
--- object login-form-api:
-function: http
-method: post
-url: /accounts/signup/
-email: $email
-password1: $password1
-password2: $password2
-csrfmiddlewaretoken: $csrf_token
+-- sign-up.page:
+csrf_token: asd
+title: asd

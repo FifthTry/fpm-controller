@@ -54,10 +54,20 @@ class CustomLoginView(LoginView):
         form = form_class(json_body, request=request)
         if form.is_valid():
             response = self.form_valid(form)
-            resp = JsonResponse({"redirect": "/"})
+            resp = JsonResponse({"data": {"url": "/"}})
             resp.cookies = response.cookies
         else:
-            resp = JsonResponse({k: [x for x in v] for (k, v) in form.errors.items()})
+            mapped_keys = {
+                "login": "fifthtry.github.io/fpm-controller-ui/sign-in/#error-email",
+                "password": "fifthtry.github.io/fpm-controller-ui/sign-in/#error-password",
+                "__all__": "fifthtry.github.io/fpm-controller-ui/sign-in/#error-form",
+            }
+            resp = {
+                mapped_keys[k]: ", ".join([x for x in v])
+                for (k, v) in form.errors.items()
+            }
+
+            resp = JsonResponse({"data": resp})
         return resp
 
 
@@ -79,8 +89,20 @@ class CustomSignUpView(SignupView):
         form = form_class(json_body)
         if form.is_valid():
             original_resp = self.form_valid(form)
-            resp = JsonResponse({})
+            resp = JsonResponse({"data": {"url": "/"}})
             resp.cookies = original_resp.cookies
         else:
-            resp = JsonResponse({k: [x for x in v] for (k, v) in form.errors.items()})
+            mapped_keys = {
+                "email": "fifthtry.github.io/fpm-controller-ui/sign-up/#error-email",
+                "password1": "fifthtry.github.io/fpm-controller-ui/sign-up/#error-password",
+                "password2": "fifthtry.github.io/fpm-controller-ui/sign-up/#error-password-confirm",
+                "__all__": "fifthtry.github.io/fpm-controller-ui/sign-up/#error-form",
+            }
+            resp = JsonResponse(
+                {
+                    "data": {
+                        mapped_keys[k]: [x for x in v] for (k, v) in form.errors.items()
+                    }
+                }
+            )
         return resp

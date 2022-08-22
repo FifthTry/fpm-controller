@@ -97,12 +97,22 @@ class CreateNewView(TemplateView):
         data = json.loads(request.body.decode("utf-8"))
         form_instance = fpm_forms.PackageForm(data)
         if not form_instance.is_valid():
+            mapped_keys = {
+                "name": "fifthtry.github.io/fpm-controller-ui/create-package/#error-package-name",
+                "plan": "fifthtry.github.io/fpm-controller-ui/create-package/#error-plan",
+                "__all__": "fifthtry.github.io/fpm-controller-ui/create-package/#error-form",
+            }
             return JsonResponse(
-                {k: [x for x in v] for (k, v) in form_instance.errors.items()}
+                {
+                    "data": {
+                        mapped_keys[k]: ", ".join([x for x in v])
+                        for (k, v) in form_instance.errors.items()
+                    }
+                }
             )
         else:
             instance = form_instance.save(commit=False)
             instance.slug = slugify(instance.name)
             instance.owner = self.request.user
             instance.save()
-        return JsonResponse({})
+        return JsonResponse({"data": {"url": "/"}})

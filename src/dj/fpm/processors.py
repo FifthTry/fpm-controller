@@ -15,5 +15,11 @@ def deployed_projects(request, doc_id, section, interpreter):
     # ftd.object_to_value({}, section, interpreter)
     data = []
     for instance in fpm_models.Package.objects.filter(owner=request.user):
-        data.append({"name": instance.name, "url": f"https://{instance.site.domain}"})
+        data.append(
+            {
+                "title": instance.name,
+                "package-url": f"https://{instance.site.domain}",
+                "description": "asd",
+            }
+        )
     return ftd.object_to_value(data, section, interpreter)

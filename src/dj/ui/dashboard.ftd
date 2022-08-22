@@ -1,25 +1,7 @@
--- record project:
-string name:
-string url:
+-- import: fifthtry.github.io/fpm-controller-ui/dashboard
 
--- project list deployed_projects:
+-- dashboard.package list packages:
 $processor$: deployed_projects
 
--- ftd.text: +New Package
-link: /create-new/
-
-
--- ftd.column show-package:
-caption title:
-string url:
-
---- ftd.text: $title
-link: $url
-
-
--- ftd.column packages-list:
-width: fill
-
--- show-package: $obj.name
-$loop$: $deployed_projects as $obj
-url: $obj.url
+-- dashboard.page:
+package-list: $packages
