@@ -1,0 +1,9 @@
+-- import: fpm
+
+-- fpm.package: ui
+base: this is base
+
+-- fpm.dependency: fifthtry.github.io/fpm-controller-ui as ft
+-- fpm.dependency: fifthtry.github.io/button as button
+
+-- fpm.auto-import: fpm

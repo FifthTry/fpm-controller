@@ -1,0 +1,36 @@
+-- ftd.color black:
+light: black
+dark: black
+
+-- optional string username:
+$always-include$: true
+
+-- optional string password:
+$always-include$: true
+
+-- string csrf_token:
+$processor$: csrf_token
+$always-include$: true
+
+-- ftd.input:
+$on-change$: $username=$VALUE
+border-color: $black
+placeholder: Enter Username
+
+-- ftd.input:
+$on-change$: $password=$VALUE
+border-color: $black
+placeholder: Enter Password
+
+
+-- ftd.text: Sign In
+color: $black
+$on-click$: message-host $login-form-api
+
+-- object login-form-api:
+function: http
+method: post
+url: /accounts/login/
+login: $username
+password: $password
+csrfmiddlewaretoken: $csrf_token

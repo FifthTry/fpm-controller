@@ -1,8 +1,11 @@
+import json
 import django.http
-from django.http import JsonResponse
-from fpm.models import DedicatedInstance
+from django.http import JsonResponse, HttpResponseRedirect
+from fpm import models as fpm_models
 from fpm import jobs as fpm_jobs
 from fpm import tasks as fpm_tasks
+from django.views.generic import TemplateView, FormView
+from fpm import forms as fpm_forms
 
 
 def success(data, status=200):
@@ -28,8 +31,8 @@ def fpm_ready(req: django.http.HttpRequest):
         return error("hash is mandatory parameter", status=402)
 
     try:
-        instance: DedicatedInstance = DedicatedInstance.objects.get(
-            ec2_instance_id=ec2_instance_id
+        instance: fpm_models.DedicatedInstance = (
+            fpm_models.DedicatedInstance.objects.get(ec2_instance_id=ec2_instance_id)
         )
     except:
         return error("instance with ec2_instance_id id not found", status=404)
@@ -38,7 +41,7 @@ def fpm_ready(req: django.http.HttpRequest):
     nginx_config_manager()
     # nginx_config_manager = fpm_jobs.NginxConfigGenerator(instance.package, instance)
     # nginx_config_manager.generate()
-    instance.status = DedicatedInstance.InstanceStatus.READY
+    instance.status = fpm_models.DedicatedInstance.InstanceStatus.READY
     instance.save()
 
     return success({})
@@ -54,8 +57,8 @@ def get_package(req: django.http.HttpRequest):
         return error("ec2_instance_id is mandatory parameter", status=402)
 
     try:
-        instance: DedicatedInstance = DedicatedInstance.objects.get(
-            ec2_instance_id=ec2_instance_id
+        instance: fpm_models.DedicatedInstance = (
+            fpm_models.DedicatedInstance.objects.get(ec2_instance_id=ec2_instance_id)
         )
     except:
         return error("instance with ec2_instance_id id not found", status=404)
@@ -67,3 +70,39 @@ def get_package(req: django.http.HttpRequest):
             "base": "https://github.com/",
         }
     )
+
+
+class IndexView(TemplateView):
+    template_name = "/dashboard/"
+
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return HttpResponseRedirect("/accounts/login/")
+        return super().dispatch(request, *args, **kwargs)
+
+
+from django.utils.text import slugify
+
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
+
+
+@method_decorator(csrf_exempt, name="dispatch")
+class CreateNewView(TemplateView):
+    template_name: str = "/create-package/"
+    form_class = fpm_forms.PackageForm
+    # success_url = "/"
+
+    def post(self, request, *args, **kwargs):
+        data = json.loads(request.body.decode("utf-8"))
+        form_instance = fpm_forms.PackageForm(data)
+        if not form_instance.is_valid():
+            return JsonResponse(
+                {k: [x for x in v] for (k, v) in form_instance.errors.items()}
+            )
+        else:
+            instance = form_instance.save(commit=False)
+            instance.slug = slugify(instance.name)
+            instance.owner = self.request.user
+            instance.save()
+        return JsonResponse({})

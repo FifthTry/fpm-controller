@@ -1,0 +1,36 @@
+-- ftd.color black:
+light: black
+dark: black
+
+-- optional string name:
+$always-include$: true
+
+-- optional string plan:
+$always-include$: true
+
+-- string csrf_token:
+$processor$: csrf_token
+$always-include$: true
+
+-- ftd.input:
+$on-change$: $name=$VALUE
+border-color: $black
+placeholder: Enter Project Name
+
+-- ftd.input:
+$on-change$: $plan=$VALUE
+border-color: $black
+placeholder: Select Plan(free)
+
+
+-- ftd.text: Create new Package
+color: $black
+$on-click$: message-host $login-form-api
+
+-- object login-form-api:
+function: http
+method: post
+url: /create-new/
+name: $name
+plan: $plan
+csrfmiddlewaretoken: $csrf_token

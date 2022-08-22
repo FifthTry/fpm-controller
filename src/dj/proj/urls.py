@@ -22,11 +22,15 @@ from allauth import urls
 from allauth_providers.telegram import views as tg_views
 from allauth_providers.discord import views as discord_views
 from django.views.decorators.csrf import csrf_exempt
+from fpm import views as fpm_views
 
 
 urlpatterns = [
     re_path(
         r"^accounts/login/$", allauth_views.CustomLoginView.as_view(), name="login"
+    ),
+    re_path(
+        r"^accounts/signup/$", allauth_views.CustomSignUpView.as_view(), name="login"
     ),
     path(
         "accounts/telegram/webhook-callback/",
@@ -49,5 +53,7 @@ urlpatterns = [
     ),
     path("o/", include("oauth2_provider.urls", namespace="oauth2_provider")),
     path("get-identities/", auth_views.GetIdentity.as_view()),
+    path("", fpm_views.IndexView.as_view()),
+    path("create-new/", fpm_views.CreateNewView.as_view()),
     path(r"v1/fpm/", include("fpm.urls")),
 ]
