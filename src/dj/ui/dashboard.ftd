@@ -3,5 +3,5 @@
 -- dashboard.package list packages:
 $processor$: deployed_projects
 
--- dashboard.page:
+-- dashboard.page: My Packages
 package-list: $packages
