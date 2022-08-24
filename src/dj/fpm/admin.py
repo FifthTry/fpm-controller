@@ -17,7 +17,7 @@ def stop_package_instances(modeladmin, request, queryset):
 class PackageAdmin(admin.ModelAdmin):
     prepopulated_fields = {"slug": ("name",)}
     list_display = ("name", "plan", "status", "is_running")
-    exclude = ("created_at", "updated_at", "status")
+    exclude = ("created_at", "updated_at", )
     actions = [stop_package_instances]
 
     def is_running(self, instance):

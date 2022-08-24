@@ -71,6 +71,7 @@ class Package(models.Model):
         max_length=20,
         choices=PackageStatusChoices.choices,
         default=PackageStatusChoices.CONNECTED,
+        editable=False
     )
     site = models.OneToOneField(site_models.Site, on_delete=models.PROTECT)
     domain_state = models.CharField(
@@ -89,17 +90,16 @@ class Package(models.Model):
             self.domain_state = self.DomainMapStatusChoices.INITIATED
             self.application = Application()
             self.app_secret = self.application.client_secret
-            self.site = site_models.Site(
-                name=self.name, domain=f"{self.slug}.5thtry.com"
-            )
         application = self.application
         application.name = self.name
         application.skip_authorization = True
         application.client_type = Application.CLIENT_PUBLIC
         application.authorization_grant_type = Application.GRANT_AUTHORIZATION_CODE
-        application.redirect_uris = f"https://{self.site.domain}/-/dj/login/callback/"
         with transaction.atomic():
-            self.site.save()
+            (self.site, _) = site_models.Site.objects.get_or_create(
+                name=self.name, domain=f"{self.slug}.5thtry.com"
+            )
+            application.redirect_uris = f"https://{self.site.domain}/-/dj/login/callback/"
             application.save()
             super().save(*args, **kwargs)
             self.refresh_from_db()
