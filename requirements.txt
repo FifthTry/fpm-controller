@@ -8,7 +8,7 @@ pkce
 djangorestframework
 PyGithub
 haikunator
-ftd-django==0.1.8
+ftd-django==0.1.9
 ftd-sys==0.1.4
 ftd==0.1.6
 huey
